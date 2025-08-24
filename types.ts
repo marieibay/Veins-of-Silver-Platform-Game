@@ -22,10 +22,14 @@ export interface PlayerState {
   facing: 1 | -1;
   attacking: boolean;
   attackCooldown: number;
-  invincibilityTimer: number; // To prevent rapid damage
+  invincibilityTimer: number;
   animation: PlayerAnimationState;
   isWerewolf: boolean;
   werewolfTimer: number;
+  experience: number;
+  level: number;
+  damageMultiplier: number;
+  specialAttackCooldown: number;
 }
 
 export interface Platform {
@@ -35,7 +39,7 @@ export interface Platform {
   height: number;
 }
 
-export type EnemyType = 'enforcer' | 'seeker';
+export type EnemyType = 'enforcer' | 'seeker' | 'boss';
 
 export interface Enemy {
   id: number;
@@ -44,6 +48,7 @@ export interface Enemy {
   width: number;
   height: number;
   health: number;
+  maxHealth: number;
   speed: number;
   direction: 1 | -1;
   type: EnemyType;
@@ -59,10 +64,11 @@ export interface Projectile {
   width: number;
   height: number;
   velocityX: number;
-  velocityY: number;
+  type: 'pendantShard';
+  owner: 'player' | 'enemy';
 }
 
-export type PowerUpType = 'lunarFragment';
+export type PowerUpType = 'lunarFragment' | 'isoldeAid' | 'healthVial';
 
 export interface PowerUp {
     id: number;
@@ -101,6 +107,16 @@ export interface Goal {
     height: number;
 }
 
+export interface LevelData {
+  playerStart: { x: number; y: number };
+  platforms: Platform[];
+  enemies: Enemy[];
+  powerUps: PowerUp[];
+  goal: Goal;
+  worldWidth: number;
+  worldHeight: number;
+}
+
 export interface GameState {
   player: PlayerState;
   platforms: Platform[];
@@ -113,6 +129,8 @@ export interface GameState {
   worldWidth: number;
   worldHeight: number;
   goal: Goal;
+  currentLevel: number;
+  isoldeAttackTimer: number;
 }
 
 export type GameStatus = 'title' | 'playing' | 'gameOver' | 'victory';
@@ -121,6 +139,7 @@ export interface UIState {
     health: number;
     mana: number;
     score: number;
+    level: number;
     isWerewolf: boolean;
     werewolfTimer: number;
     isMuted: boolean;

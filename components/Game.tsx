@@ -1,23 +1,26 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { GameState, GameStatus, UIState, PlayerState, Platform, Enemy } from '../types';
+import { GameState, GameStatus, UIState } from '../types';
 import * as C from '../constants';
-import { TitleScreen, GameOverScreen, UIOverlay, VictoryScreen } from './UI';
-import { createInitialGameState, updatePlayer, updateEnemies } from '../services/gameLogic';
-import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps } from '../services/renderLogic';
+import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen } from './UI';
+import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles } from '../services/gameLogic';
+import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
+import { LEVELS } from '../data/levels';
 
 const Game: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const gameStateRef = useRef<GameState>(createInitialGameState());
+    const gameStateRef = useRef<GameState>(createGameStateForLevel(0));
     const keysPressed = useRef<Record<string, boolean>>({});
     const animationFrameId = useRef<number>(0);
 
     const [gameStatus, setGameStatus] = useState<GameStatus>('title');
+    const [currentLevel, setCurrentLevel] = useState(0);
     const [uiState, setUiState] = useState<UIState>({
         health: C.PLAYER_MAX_HEALTH,
         mana: C.PLAYER_MAX_MANA,
         score: 0,
+        level: 1,
         isWerewolf: false,
         werewolfTimer: 0,
         isMuted: audioManager.isMuted(),
@@ -39,11 +42,12 @@ const Game: React.FC = () => {
             health: player.health, 
             mana: player.mana, 
             score,
+            level: currentLevel + 1,
             isWerewolf: player.isWerewolf,
             werewolfTimer: player.werewolfTimer,
             isMuted: audioManager.isMuted(),
         });
-    }, []);
+    }, [currentLevel]);
     
     const toggleMute = useCallback(() => {
         audioManager.toggleMute();
@@ -57,34 +61,32 @@ const Game: React.FC = () => {
 
         const state = gameStateRef.current;
         
-        // Update player state
         updatePlayer(state, keysPressed.current);
-        
-        // Update enemies
         updateEnemies(state);
+        updateProjectiles(state);
+        updateParticles(state);
 
-        // Fall damage / out of bounds
         if (state.player.y > state.worldHeight + 100) {
             state.player.health = 0;
         }
         
-        // Check for goal collision
-        const playerHitbox = { ...state.player, x: state.player.x + 10, width: state.player.width - 20 };
-        if (state.player.x + state.player.width > state.goal.x && state.player.x < state.goal.x + state.goal.width &&
-            state.player.y + state.player.height > state.goal.y && state.player.y < state.goal.y + state.goal.height) {
+        const playerHitbox = { x: state.player.x, y: state.player.y, width: state.player.width, height: state.player.height };
+        if (checkCollision(playerHitbox, state.goal)) {
             setGameStatus('victory');
+            audioManager.playSFX('powerUp'); // Re-using for level complete
         }
 
-
-        // Camera
+        // Update camera to follow player on both axes
         state.camera.x = state.player.x - C.CANVAS_WIDTH / 2 + state.player.width / 2;
+        state.camera.y = state.player.y - C.CANVAS_HEIGHT / 2 - 100; // Bias upward
+        // Clamp camera to world bounds
         state.camera.x = Math.max(0, Math.min(state.camera.x, state.worldWidth - C.CANVAS_WIDTH));
+        state.camera.y = Math.max(0, Math.min(state.camera.y, state.worldHeight - C.CANVAS_HEIGHT));
 
-        // Player health check
+
         if (state.player.health <= 0) {
             setGameStatus('gameOver');
         } else {
-            // Render
             ctx.clearRect(0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT);
             drawBackground(ctx, state.camera);
             ctx.save();
@@ -97,6 +99,7 @@ const Game: React.FC = () => {
             drawPlayer(ctx, state.player);
             drawProjectiles(ctx, state.projectiles);
             drawParticles(ctx, state.particles);
+            drawIsolde(ctx, state);
 
             ctx.restore();
             
@@ -104,16 +107,31 @@ const Game: React.FC = () => {
             animationFrameId.current = requestAnimationFrame(gameLoop);
         }
     }, [gameStatus, updateUI]);
-
+    
     const startGame = () => {
-        gameStateRef.current = createInitialGameState();
+        setCurrentLevel(0);
+        gameStateRef.current = createGameStateForLevel(0);
         updateUI();
         setGameStatus('playing');
         audioManager.playMusic();
     };
 
+    const handleNextLevel = () => {
+        const nextLevel = currentLevel + 1;
+        if (nextLevel < LEVELS.length) {
+            setCurrentLevel(nextLevel);
+            gameStateRef.current = createGameStateForLevel(nextLevel, gameStateRef.current.player);
+            updateUI();
+            setGameStatus('playing');
+            audioManager.playMusic();
+        } else {
+            // Final victory, go back to title screen
+            setGameStatus('title');
+        }
+    }
+
     const restartGame = () => {
-        startGame();
+        setGameStatus('title');
     };
 
     useEffect(() => {
@@ -138,6 +156,7 @@ const Game: React.FC = () => {
 
     useEffect(() => {
         if (gameStatus === 'playing') {
+            audioManager.playMusic();
             animationFrameId.current = requestAnimationFrame(gameLoop);
         } else {
             audioManager.stopMusic();
@@ -147,22 +166,28 @@ const Game: React.FC = () => {
         };
     }, [gameStatus, gameLoop]);
 
+    const checkCollision = (a: any, b: any) => {
+        return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    }
+
     return (
         <div 
             id="gameContainer" 
             className="relative overflow-hidden border-4 border-slate-800 shadow-2xl" 
             style={{ width: C.CANVAS_WIDTH, height: C.CANVAS_HEIGHT }}
         >
-            <canvas 
-                ref={canvasRef} 
-                width={C.CANVAS_WIDTH} 
-                height={C.CANVAS_HEIGHT}
-                className="absolute top-0 left-0 bg-black"
-            />
+            {gameStatus !== 'title' && (
+                <canvas 
+                    ref={canvasRef} 
+                    width={C.CANVAS_WIDTH} 
+                    height={C.CANVAS_HEIGHT}
+                    className="absolute top-0 left-0 bg-black"
+                />
+            )}
+            {gameStatus === 'title' && <TitleScreen onStart={startGame} />}
             {gameStatus === 'playing' && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
-            {gameStatus === 'title' && <TitleScreen onStart={startGame} isLoading={false} />}
             {gameStatus === 'gameOver' && <GameOverScreen score={uiState.score} onRestart={restartGame} />}
-            {gameStatus === 'victory' && <VictoryScreen score={uiState.score} onRestart={restartGame} />}
+            {gameStatus === 'victory' && <VictoryScreen score={uiState.score} onNextLevel={handleNextLevel} isLastLevel={currentLevel >= LEVELS.length - 1} />}
         </div>
     );
 };

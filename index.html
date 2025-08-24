@@ -23,7 +23,8 @@
           animation: glow 1.5s ease-in-out infinite alternate;
       }
       body {
-        font-family: 'Press Start 2P', cursive;
+        /* This will be overridden by component styles, but good as a fallback */
+        font-family: 'Courier New', monospace;
         /* Disable antialiasing for pixelated text */
         -webkit-font-smoothing: none;
         -moz-osx-font-smoothing: grayscale;
@@ -35,6 +36,25 @@
         image-rendering: pixelated;
         image-rendering: crisp-edges;
       }
+       .start-game-button {
+        display: inline-block;
+        background: linear-gradient(to right, #e53e3e, #9b2c2c);
+        color: white;
+        font-family: 'Press Start 2P', cursive;
+        font-weight: bold;
+        padding: 12px 32px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s;
+        text-decoration: none;
+        border: 2px solid #7f1d1d;
+        cursor: pointer;
+    }
+    .start-game-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+    }
     </style>
   <script type="importmap">
 {

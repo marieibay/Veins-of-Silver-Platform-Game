@@ -1,7 +1,8 @@
 
-import { GameState, PlayerState, Platform, Enemy, Particle, PowerUp } from '../types';
+import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
+import { LEVELS } from '../data/levels';
 
 export const checkCollision = (
     a: { x: number; y: number; width: number; height: number; },
@@ -33,12 +34,65 @@ const createHitParticles = (x: number, y: number, count: number, color = '#ff4d4
     return particles;
 };
 
+export const updateProjectiles = (state: GameState) => {
+    state.projectiles.forEach((projectile, pIndex) => {
+        projectile.x += projectile.velocityX;
+
+        // Remove if off-screen
+        if (projectile.x < state.camera.x - 20 || projectile.x > state.camera.x + C.CANVAS_WIDTH + 20) {
+            state.projectiles.splice(pIndex, 1);
+            return;
+        }
+
+        // Collision with enemies
+        state.enemies.forEach((enemy) => {
+            if (checkCollision(projectile, enemy)) {
+                enemy.health -= C.PENDANT_DAMAGE;
+                enemy.hitTimer = 10;
+                audioManager.playSFX('enemyHit');
+                state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#4dccbd'));
+                
+                if (enemy.health <= 0) {
+                    const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                    state.player.experience += xp;
+                    state.score += xp;
+                    audioManager.playSFX('enemyDefeated');
+                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                }
+
+                state.projectiles.splice(pIndex, 1);
+            }
+        });
+    });
+};
+
+export const updateParticles = (state: GameState) => {
+    state.particles.forEach((p, index) => {
+        p.life--;
+        if (p.life <= 0) {
+            state.particles.splice(index, 1);
+        }
+    });
+};
 
 export const updateEnemies = (state: GameState) => {
     const { enemies, player } = state;
 
+    if (state.isoldeAttackTimer > 0) {
+        state.isoldeAttackTimer--;
+        if (state.isoldeAttackTimer === 45) { // At the peak of the animation
+            enemies.forEach(enemy => {
+                 // Check if enemy is on screen
+                if (enemy.x > state.camera.x && enemy.x < state.camera.x + C.CANVAS_WIDTH) {
+                    enemy.health = 0; // Instantly defeat on-screen enemies
+                    state.particles.push(...createHitParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 30, '#e0e0e0'));
+                }
+            });
+        }
+    }
+
+
     enemies.forEach(enemy => {
-        // Simple patrol AI
         if(enemy.type === 'enforcer') {
             enemy.x += enemy.speed * enemy.direction;
             if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
@@ -46,7 +100,6 @@ export const updateEnemies = (state: GameState) => {
             }
         }
         
-        // Seeker Hover AI
         if(enemy.type === 'seeker') {
              enemy.y += Math.sin(Date.now() / 300 + enemy.id) * 0.5;
              enemy.x += enemy.speed * enemy.direction;
@@ -54,74 +107,72 @@ export const updateEnemies = (state: GameState) => {
                 enemy.direction *= -1;
             }
         }
-
-        // Decrement hit timer
-        if (enemy.hitTimer > 0) {
-            enemy.hitTimer--;
+        
+        if(enemy.type === 'boss') {
+            const distance = player.x - enemy.x;
+            if (Math.abs(distance) < 400) {
+                enemy.direction = Math.sign(distance) as 1 | -1;
+                enemy.x += enemy.speed * enemy.direction;
+            }
         }
 
-        // Player collision
+        if (enemy.hitTimer > 0) enemy.hitTimer--;
+
         if (player.invincibilityTimer === 0 && checkCollision(player, enemy)) {
-            player.health -= 10;
-            player.invincibilityTimer = 60; // 1 second of invincibility
+            player.health -= enemy.type === 'boss' ? 25 : 10;
+            player.invincibilityTimer = 60;
             audioManager.playSFX('playerHurt');
-             // Knockback
             player.velocityY = -5;
-            player.velocityX = 5 * (player.x < enemy.x ? -1 : 1);
+            player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
         }
     });
 
-    // Remove dead enemies
     state.enemies = state.enemies.filter(enemy => enemy.health > 0);
-
-     // Update particles
-    state.particles.forEach(p => p.life--);
-    state.particles = state.particles.filter(p => p.life > 0);
 };
 
 export const updatePlayer = (state: GameState, keys: Record<string, boolean>): void => {
     const { player, platforms, enemies, particles, powerUps } = state;
-    // --- COOLDOWNS & TIMERS ---
+    
     if (player.attackCooldown > 0) player.attackCooldown--;
+    if (player.specialAttackCooldown > 0) player.specialAttackCooldown--;
     if (player.invincibilityTimer > 0) player.invincibilityTimer--;
     if (player.werewolfTimer > 0) {
         player.werewolfTimer--;
-        if (player.werewolfTimer === 0) {
-            player.isWerewolf = false;
-        }
+        if (player.werewolfTimer === 0) player.isWerewolf = false;
     }
 
-    // --- POWER-UP COLLISION ---
     powerUps.forEach((powerUp, index) => {
         if (checkCollision(player, powerUp)) {
-            if (powerUp.type === 'lunarFragment') {
+            if (powerUp.type === 'lunarFragment' && !player.isWerewolf) {
                 player.isWerewolf = true;
                 player.werewolfTimer = C.WEREWOLF_DURATION;
                 particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, '#a855f7'));
                 audioManager.playSFX('powerUp');
                 powerUps.splice(index, 1);
             }
+            if (powerUp.type === 'isoldeAid') {
+                state.isoldeAttackTimer = 60;
+                audioManager.playSFX('isoldeAssist');
+                powerUps.splice(index, 1);
+            }
+             if (powerUp.type === 'healthVial') {
+                player.health = Math.min(player.maxHealth, player.health + C.HEALTH_VIAL_AMOUNT);
+                particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, '#34d399')); // Green particles for healing
+                audioManager.playSFX('powerUp');
+                powerUps.splice(index, 1);
+            }
         }
     });
 
-
-    // --- STATE UPDATE based on INPUT ---
     if (keys['j'] && !player.attacking && player.attackCooldown === 0) {
         player.attacking = true;
         player.animation.frameTimer = 0;
         
         if (player.isWerewolf) {
-            // --- CLAW ATTACK ---
             player.attackCooldown = C.CLAW_ATTACK_COOLDOWN;
             player.animation.currentState = 'clawAttack';
             audioManager.playSFX('clawAttack');
-            const hitbox = {
-                x: player.facing === 1 ? player.x + player.width : player.x - 45,
-                y: player.y,
-                width: 45,
-                height: player.height,
-            };
-
+            const hitbox = { x: player.facing === 1 ? player.x + player.width : player.x - 45, y: player.y, width: 45, height: player.height };
             enemies.forEach(enemy => {
                 if (checkCollision(hitbox, enemy)) {
                     enemy.health -= C.CLAW_DAMAGE;
@@ -129,25 +180,20 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     audioManager.playSFX('enemyHit');
                     particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8));
                     if (enemy.health <= 0) {
-                        state.score += 150; // More points for werewolf kills
+                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                        state.player.experience += xp;
+                        state.score += xp;
                         audioManager.playSFX('enemyDefeated');
                         particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
                     }
                 }
             });
-            player.velocityX = 5 * player.facing; // Lunge forward
+            player.velocityX = 5 * player.facing;
         } else {
-            // --- DAGGER ATTACK ---
             player.attackCooldown = C.ATTACK_COOLDOWN;
             player.animation.currentState = 'attack';
             audioManager.playSFX('daggerAttack');
-            const hitbox = {
-                x: player.facing === 1 ? player.x + player.width : player.x - 30,
-                y: player.y + player.height / 4,
-                width: 30,
-                height: player.height / 2,
-            };
-
+            const hitbox = { x: player.facing === 1 ? player.x + player.width : player.x - 30, y: player.y + player.height / 4, width: 30, height: player.height / 2,};
             enemies.forEach(enemy => {
                 if (checkCollision(hitbox, enemy)) {
                     enemy.health -= C.DAGGER_DAMAGE;
@@ -155,7 +201,9 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     audioManager.playSFX('enemyHit');
                     particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 5));
                     if (enemy.health <= 0) {
-                        state.score += 100;
+                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                        state.player.experience += xp;
+                        state.score += xp;
                         audioManager.playSFX('enemyDefeated');
                         particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
                     }
@@ -164,29 +212,34 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     }
 
-    // --- MOVEMENT & PHYSICS ---
-    if (!player.attacking || player.isWerewolf) { // Allow movement while claw attacking
-        if (keys['a'] || keys['arrowleft']) {
-            player.velocityX = -player.speed;
-            player.facing = -1;
-        } else if (keys['d'] || keys['arrowright']) {
-            player.velocityX = player.speed;
-            player.facing = 1;
-        } else {
-            if(!player.attacking) player.velocityX *= C.FRICTION;
-        }
-        if ((keys[' '] || keys['w'] || keys['arrowup']) && player.onGround) {
-            player.velocityY = -player.jumpPower;
-            player.onGround = false;
-            audioManager.playSFX('jump');
-        }
+    if (keys['k'] && player.specialAttackCooldown === 0 && player.mana >= C.PENDANT_COST) {
+        player.mana -= C.PENDANT_COST;
+        player.specialAttackCooldown = C.PENDANT_COOLDOWN;
+        audioManager.playSFX('pendantCast');
+        state.projectiles.push({
+            id: Math.random(),
+            x: player.x + (player.facing === 1 ? player.width : 0),
+            y: player.y + player.height / 2 - 5,
+            width: 10,
+            height: 10,
+            velocityX: C.PENDANT_SPEED * player.facing,
+            type: 'pendantShard',
+            owner: 'player',
+        });
+        particles.push(...createHitParticles(player.x + player.width/2, player.y + player.height/2, 10, '#4dccbd'));
+    }
+
+    if (!player.attacking || player.isWerewolf) {
+        if (keys['a'] || keys['arrowleft']) { player.velocityX = -player.speed; player.facing = -1; } 
+        else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
+        else { if(!player.attacking) player.velocityX *= C.FRICTION; }
+        if ((keys[' '] || keys['w'] || keys['arrowup']) && player.onGround) { player.velocityY = -player.jumpPower; player.onGround = false; audioManager.playSFX('jump'); }
     }
     
     player.velocityY += C.GRAVITY;
     player.x += player.velocityX;
     player.y += player.velocityY;
 
-    // --- COLLISION DETECTION ---
     player.onGround = false;
     platforms.forEach(platform => {
         if (checkCollision(player, platform) && player.y + player.height < platform.y + 20 && player.velocityY >= 0) {
@@ -195,11 +248,14 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
              player.onGround = true;
         }
     });
+    
+    // World bounds
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > state.worldWidth) player.x = state.worldWidth - player.width;
 
-    // --- ANIMATION ---
+
     player.animation.frameTimer++;
-    if ((player.animation.currentState === 'attack' && player.animation.frameTimer > 15) ||
-        (player.animation.currentState === 'clawAttack' && player.animation.frameTimer > 12)) { // Claw attack is faster
+    if ((player.animation.currentState === 'attack' && player.animation.frameTimer > 15) || (player.animation.currentState === 'clawAttack' && player.animation.frameTimer > 12)) {
         player.attacking = false;
     }
 
@@ -216,10 +272,12 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
 };
 
 
-export const createInitialGameState = (): GameState => {
+export const createGameStateForLevel = (levelIndex: number, previousPlayerState?: PlayerState): GameState => {
+    const levelData = LEVELS[levelIndex];
+
     const initialPlayer: PlayerState = {
-        x: 100,
-        y: 400,
+        x: levelData.playerStart.x,
+        y: levelData.playerStart.y,
         width: C.PLAYER_WIDTH,
         height: C.PLAYER_HEIGHT,
         velocityX: 0,
@@ -227,57 +285,36 @@ export const createInitialGameState = (): GameState => {
         speed: C.PLAYER_SPEED,
         jumpPower: C.PLAYER_JUMP_POWER,
         onGround: false,
-        health: C.PLAYER_MAX_HEALTH,
+        health: previousPlayerState ? previousPlayerState.health : C.PLAYER_MAX_HEALTH,
         maxHealth: C.PLAYER_MAX_HEALTH,
         mana: C.PLAYER_MAX_MANA,
         maxMana: C.PLAYER_MAX_MANA,
         facing: 1,
         attacking: false,
         attackCooldown: 0,
+        specialAttackCooldown: 0,
         invincibilityTimer: 0,
-        animation: {
-            currentState: 'idle',
-            frameIndex: 0,
-            frameTimer: 0,
-        },
+        animation: { currentState: 'idle', frameIndex: 0, frameTimer: 0 },
         isWerewolf: false,
         werewolfTimer: 0,
+        experience: previousPlayerState ? previousPlayerState.experience : 0,
+        level: 1,
+        damageMultiplier: 1,
     };
-
-    const initialPlatforms: Platform[] = [
-        {x: 0, y: 550, width: 300, height: 50},
-        {x: 350, y: 500, width: 200, height: 50},
-        {x: 600, y: 450, width: 150, height: 50},
-        {x: 800, y: 400, width: 200, height: 50},
-        {x: 1100, y: 500, width: 150, height: 50},
-        {x: 1300, y: 420, width: 200, height: 50},
-        {x: 1600, y: 450, width: 300, height: 50},
-        {x: 1850, y: 400, width: 150, height: 50}
-    ];
-
-    const initialEnemies: Enemy[] = [
-        {id: 1, x: 400, y: 452, width: 32, height: 48, health: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 360, patrolRange: 120},
-        {id: 2, x: 850, y: 352, width: 32, height: 48, health: 30, speed: 1, direction: -1, type: 'enforcer', hitTimer: 0, startX: 810, patrolRange: 120},
-        {id: 3, x: 1200, y: 300, width: 40, height: 40, health: 50, speed: 1, direction: 1, type: 'seeker', hitTimer: 0, startX: 1150, patrolRange: 200},
-        {id: 4, x: 1400, y: 372, width: 32, height: 48, health: 30, speed: 1, direction: -1, type: 'enforcer', hitTimer: 0, startX: 1310, patrolRange: 150},
-        {id: 5, x: 1700, y: 402, width: 32, height: 48, health: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1650, patrolRange: 180},
-    ];
-
-    const initialPowerUps: PowerUp[] = [
-        {id: 1, x: 650, y: 420, width: 24, height: 24, type: 'lunarFragment'}
-    ];
 
     return {
         player: initialPlayer,
-        platforms: initialPlatforms,
-        enemies: initialEnemies,
+        platforms: JSON.parse(JSON.stringify(levelData.platforms)),
+        enemies: JSON.parse(JSON.stringify(levelData.enemies)),
         projectiles: [],
         particles: [],
-        powerUps: initialPowerUps,
+        powerUps: JSON.parse(JSON.stringify(levelData.powerUps)),
         camera: { x: 0, y: 0 },
-        score: 0,
-        worldWidth: C.WORLD_WIDTH,
-        worldHeight: C.WORLD_HEIGHT,
-        goal: { x: C.WORLD_WIDTH - 120, y: 300, width: 60, height: 100 }
+        score: previousPlayerState ? previousPlayerState.experience : 0,
+        worldWidth: levelData.worldWidth,
+        worldHeight: levelData.worldHeight,
+        goal: {...levelData.goal},
+        currentLevel: levelIndex,
+        isoldeAttackTimer: 0,
     };
 };

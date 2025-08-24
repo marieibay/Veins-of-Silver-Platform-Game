@@ -2,36 +2,30 @@
 import React from 'react';
 import { UIState } from '../types';
 import * as C from '../constants';
+import { LEVELS } from '../data/levels';
 
 interface TitleScreenProps {
     onStart: () => void;
-    isLoading: boolean;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, isLoading }) => (
-    <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-20 p-4 text-center">
-        <h1 className="text-4xl text-red-500 font-bold mb-4 tracking-wider text-glow">VEINS OF SILVER</h1>
-        <h2 className="text-xl text-slate-400 mb-8">SHADOWS UNBOUND</h2>
-        <div className="font-mono text-teal-400 text-xs leading-none text-center my-4 scale-150">
-            <div>░░░░░░░░░░░░░░░░░░░░</div>
-            <div>░░████████████████░░</div>
-            <div>░░████████████████░░</div>
-            <div>░░██░░░░░░░░░░░░██░░</div>
-            <div>░░██░░████████░░██░░</div>
-            <div>░░██░░████████░░██░░</div>
-            <div>░░██░░░░░░░░░░░░██░░</div>
-            <div>░░████████████████░░</div>
-            <div>░░████████████████░░</div>
-        </div>
+export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => (
+    <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-30 p-8 text-center">
+        <h1 className="text-5xl text-red-400 text-glow mb-2" style={{ fontFamily: "'Press Start 2P', cursive" }}>VEINS OF SILVER</h1>
+        <h2 className="text-xl text-slate-300 mb-8" style={{ fontFamily: "'Press Start 2P', cursive" }}>SHADOWS UNBOUND</h2>
+        
+        <p className="max-w-xl text-slate-400 mb-12" style={{ fontFamily: "'Courier New', monospace" }}>
+            Hunted by a corrupt Council, you must rely on your forbidden bloodline and the aid of a rogue vampire, Isolde, to survive. Can you master your powers and uncover the truth before the shadows consume you?
+        </p>
+
         <button 
-            onClick={onStart} 
-            disabled={isLoading}
-            className="bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onStart}
+            className="start-game-button"
         >
-            {isLoading ? 'Loading Assets...' : 'Begin Journey'}
+            Start Game
         </button>
     </div>
 );
+
 
 interface GameOverScreenProps {
     score: number;
@@ -53,18 +47,19 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart
 
 interface VictoryScreenProps {
     score: number;
-    onRestart: () => void;
+    onNextLevel: () => void;
+    isLastLevel: boolean;
 }
 
-export const VictoryScreen: React.FC<VictoryScreenProps> = ({ score, onRestart }) => (
-    <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center z-30">
-        <h2 className="text-3xl text-teal-400 font-bold mb-4">VICTORY</h2>
-        <p className="text-base text-yellow-400 mb-8">You reached the sanctuary! Final Score: {score}</p>
+export const VictoryScreen: React.FC<VictoryScreenProps> = ({ score, onNextLevel, isLastLevel }) => (
+    <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center z-30 text-center">
+        <h2 className="text-3xl text-teal-400 font-bold mb-4">{isLastLevel ? 'DEMO COMPLETE' : 'LEVEL CLEAR'}</h2>
+        <p className="text-base text-yellow-400 mb-8">{isLastLevel ? 'You have survived the shadows... for now.' : 'You reached the next sanctuary!'} <br/> Total Score: {score}</p>
         <button 
-            onClick={onRestart}
+            onClick={onNextLevel}
             className="bg-gradient-to-r from-teal-500 to-green-500 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
         >
-            Play Again
+            {isLastLevel ? 'Main Menu' : 'Next Level'}
         </button>
     </div>
 );
@@ -73,7 +68,7 @@ interface UIOverlayProps extends UIState {
     onToggleMute: () => void;
 }
 
-export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, isWerewolf, werewolfTimer, isMuted, onToggleMute }) => {
+export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, level, isWerewolf, werewolfTimer, isMuted, onToggleMute }) => {
     const healthPercentage = (health / C.PLAYER_MAX_HEALTH) * 100;
     const manaPercentage = (mana / C.PLAYER_MAX_MANA) * 100;
     const werewolfPercentage = (werewolfTimer / C.WEREWOLF_DURATION) * 100;
@@ -106,17 +101,11 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, isWer
 
             {/* Score and Weapon */}
             <div className="absolute top-5 right-5 text-right">
+                <div>LEVEL: {level}/{LEVELS.length}</div>
                 <div>SCORE: {score}</div>
                 <div>{isWerewolf ? 'CLAWS' : 'DAGGERS'}</div>
             </div>
             
-            {/* Abilities */}
-            <div className="absolute bottom-5 left-5 flex gap-2">
-                <div className="w-8 h-8 bg-slate-800 bg-opacity-80 border border-indigo-800 rounded-none flex items-center justify-center">C</div>
-                <div className="w-8 h-8 bg-slate-800 bg-opacity-80 border border-indigo-800 rounded-none flex items-center justify-center">P</div>
-                <div className="w-8 h-8 bg-slate-800 bg-opacity-80 border border-indigo-800 rounded-none flex items-center justify-center">H</div>
-            </div>
-
              {/* Controls & Mute */}
             <div className="absolute bottom-5 right-5 text-slate-400 text-right leading-tight">
                  <button onClick={onToggleMute} className="pointer-events-auto hover:text-white mb-2">
@@ -125,7 +114,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, isWer
                 <div>WASD/ARROWS: Move</div>
                 <div>SPACE: Jump</div>
                 <div>J: Attack</div>
-                <div>K: Special</div>
+                <div>K: Pendant Shard</div>
             </div>
         </div>
     );
