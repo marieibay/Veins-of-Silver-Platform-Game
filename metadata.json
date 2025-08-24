@@ -1,0 +1,5 @@
+{
+  "name": "Veins of Silver: Shadows Unbound",
+  "description": "A playable demo of 'Veins of Silver: Shadows Unbound', a retro-inspired 2D action-platformer built with React, TypeScript, and Tailwind CSS, featuring canvas-based gameplay.",
+  "requestFramePermissions": []
+}
