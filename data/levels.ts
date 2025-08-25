@@ -1,4 +1,3 @@
-
 import { LevelData } from '../types';
 import * as C from '../constants';
 
@@ -66,7 +65,7 @@ export const LEVELS: LevelData[] = [
             {id: 7, x: 1540, y: 320, width: 24, height: 24, type: 'healthVial'}
         ]
     },
-    // LEVEL 3: The Ruined Spire (2-Story Level)
+    // LEVEL 3: The Ruined Spire (DIFFICULTY INCREASED)
     {
         worldWidth: 2500,
         worldHeight: 800,
@@ -91,9 +90,11 @@ export const LEVELS: LevelData[] = [
              // Ground floor enemies
             {id: 16, x: 500, y: 702, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 400, patrolRange: 400},
             {id: 17, x: 1300, y: 702, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: -1, type: 'enforcer', hitTimer: 0, startX: 1100, patrolRange: 500},
+            {id: 21, x: 1800, y: 550, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.2, direction: 1, type: 'seeker', hitTimer: 0, startX: 1600, patrolRange: 400}, // NEW
             // Ascent enemy
-            {id: 18, x: 650, y: 350, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1, direction: 1, type: 'seeker', hitTimer: 0, startX: 500, patrolRange: 400},
+            {id: 18, x: 650, y: 350, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.5, direction: 1, type: 'seeker', hitTimer: 0, startX: 500, patrolRange: 400}, // Faster
             // Second floor enemies
+            {id: 22, x: 1000, y: 302, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 950, patrolRange: 250}, // NEW
             {id: 19, x: 1500, y: 302, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1450, patrolRange: 300},
             {id: 20, x: 2200, y: 302, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: -1, type: 'enforcer', hitTimer: 0, startX: 2000, patrolRange: 300},
         ],
@@ -103,7 +104,7 @@ export const LEVELS: LevelData[] = [
              {id: 10, x: 1000, y: 320, width: 24, height: 24, type: 'lunarFragment' },
         ]
     },
-    // LEVEL 4: Sanctuary Siege
+    // LEVEL 4: Sanctuary Siege (DIFFICULTY INCREASED)
     {
         worldWidth: 3000,
         worldHeight: 600,
@@ -122,8 +123,10 @@ export const LEVELS: LevelData[] = [
         enemies: [
             {id: 10, x: 500, y: 502, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 400, patrolRange: 300},
             {id: 11, x: 600, y: 502, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: -1, type: 'enforcer', hitTimer: 0, startX: 400, patrolRange: 300},
-            {id: 12, x: 1400, y: 402, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1310, patrolRange: 250},
-            {id: 13, x: 1800, y: 350, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.5, direction: -1, type: 'seeker', hitTimer: 0, startX: 1700, patrolRange: 300},
+            {id: 23, x: 950, y: 452, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 910, patrolRange: 250}, // NEW
+            {id: 12, x: 1400, y: 402, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1310, patrolRange: 250}, // Faster
+            {id: 13, x: 1800, y: 350, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.8, direction: -1, type: 'seeker', hitTimer: 0, startX: 1700, patrolRange: 300}, // Faster
+            {id: 24, x: 2200, y: 250, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2, direction: -1, type: 'seeker', hitTimer: 0, startX: 2100, patrolRange: 400}, // NEW
             {id: 14, x: 2600, y: 350, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.5, direction: 1, type: 'seeker', hitTimer: 0, startX: 2300, patrolRange: 400},
         ],
         powerUps: [
@@ -132,7 +135,7 @@ export const LEVELS: LevelData[] = [
              {id: 9, x: 2560, y: 470, width: 24, height: 24, type: 'healthVial'}
         ]
     },
-    // LEVEL 5: The Citadel's Shadow (Boss Level)
+    // LEVEL 5: The Citadel's Shadow (DIFFICULTY DECREASED)
     {
         worldWidth: 1200,
         worldHeight: 600,
@@ -144,10 +147,11 @@ export const LEVELS: LevelData[] = [
             {x: 850, y: 450, width: 150, height: 30},
         ],
         enemies: [
-            {id: 15, x: 600, y: 454, width: C.BOSS_WIDTH, height: C.BOSS_HEIGHT, health: C.BOSS_HEALTH, maxHealth: C.BOSS_HEALTH, speed: C.BOSS_SPEED, direction: -1, type: 'boss', hitTimer: 0, startX: 100, patrolRange: 1000},
+            {id: 15, x: 600, y: 454, width: C.BOSS_WIDTH, height: C.BOSS_HEIGHT, health: 400, maxHealth: 400, speed: 0.4, direction: -1, type: 'boss', hitTimer: 0, startX: 100, patrolRange: 1000},
         ],
         powerUps: [
-            {id: 3, x: 500, y: 300, width: 24, height: 24, type: 'lunarFragment'}
+            {id: 3, x: 500, y: 300, width: 24, height: 24, type: 'lunarFragment'},
+            {id: 11, x: 250, y: 420, width: 24, height: 24, type: 'healthVial'}, // NEW
         ]
     },
 ];
