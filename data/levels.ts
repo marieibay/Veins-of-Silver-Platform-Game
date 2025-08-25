@@ -33,7 +33,7 @@ export const LEVELS: LevelData[] = [
             {id: 101, x: 2300, y: 452, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2210, patrolRange: 220},
         ],
         powerUps: [
-            {id: 4, x: 1350, y: 390, width: 24, height: 24, type: 'lunarFragment'}
+            {id: 4, x: 1250, y: 390, width: 24, height: 24, type: 'lunarFragment'}
         ]
     },
     // LEVEL 2: The Underbelly (Expanded)
@@ -66,7 +66,7 @@ export const LEVELS: LevelData[] = [
         ],
         powerUps: [
             {id: 1, x: 1525, y: 320, width: 24, height: 24, type: 'lunarFragment'},
-            {id: 7, x: 2750, y: 720, width: 24, height: 24, type: 'healthVial'}
+            {id: 7, x: 1800, y: 420, width: 24, height: 24, type: 'healthVial'}
         ]
     },
     // LEVEL 3: The Ruined Spire (Expanded)
@@ -136,8 +136,8 @@ export const LEVELS: LevelData[] = [
         ],
         powerUps: [
              {id: 2, x: 1050, y: 470, width: 24, height: 24, type: 'isoldeAid'},
-             {id: 5, x: 2950, y: 520, width: 24, height: 24, type: 'lunarFragment'},
-             {id: 9, x: 4150, y: 370, width: 24, height: 24, type: 'healthVial'}
+             {id: 5, x: 2700, y: 470, width: 24, height: 24, type: 'lunarFragment'},
+             {id: 9, x: 2200, y: 370, width: 24, height: 24, type: 'healthVial'}
         ]
     },
     // LEVEL 5: The Grand Library (New)
@@ -198,7 +198,7 @@ export const LEVELS: LevelData[] = [
         ],
         powerUps: [
             {id: 30, x: 2300, y: 270, width: 24, height: 24, type: 'isoldeAid'},
-            {id: 31, x: 475, y: 220, width: 24, height: 24, type: 'healthVial'},
+            {id: 31, x: 1650, y: 320, width: 24, height: 24, type: 'healthVial'},
         ]
     },
     // LEVEL 7: The Gilded Prison (New)
@@ -230,7 +230,7 @@ export const LEVELS: LevelData[] = [
         ],
         powerUps: [
             {id: 40, x: 2000, y: 620, width: 24, height: 24, type: 'lunarFragment'},
-            {id: 41, x: 4200, y: 320, width: 24, height: 24, type: 'healthVial'},
+            {id: 41, x: 1500, y: 620, width: 24, height: 24, type: 'healthVial'},
         ]
     },
     // LEVEL 8: The Skybridge (New)
@@ -293,7 +293,7 @@ export const LEVELS: LevelData[] = [
         powerUps: [
              {id: 60, x: 2700, y: 420, width: 24, height: 24, type: 'lunarFragment'},
              {id: 61, x: 4150, y: 520, width: 24, height: 24, type: 'isoldeAid'},
-             {id: 62, x: 100, y: 620, width: 24, height: 24, type: 'healthVial'},
+             {id: 62, x: 3050, y: 620, width: 24, height: 24, type: 'healthVial'},
         ]
     },
     // LEVEL 10: The Citadel's Throne (Final Boss)
@@ -312,7 +312,7 @@ export const LEVELS: LevelData[] = [
         ],
         powerUps: [
             {id: 3, x: 788, y: 300, width: 24, height: 24, type: 'lunarFragment'},
-            {id: 11, x: 250, y: 420, width: 24, height: 24, type: 'healthVial'},
+            {id: 11, x: 1250, y: 420, width: 24, height: 24, type: 'healthVial'},
         ]
     },
 ];
