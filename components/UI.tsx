@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UIState } from '../types';
+import { UIState, PlayerUpgrades } from '../types';
 import * as C from '../constants';
 import { LEVELS } from '../data/levels';
 
@@ -34,13 +34,13 @@ interface GameOverScreenProps {
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center z-30">
-        <h2 className="text-3xl text-red-500 font-bold mb-4">YOU DIED</h2>
+        <h2 className="text-3xl text-red-500 font-bold mb-4">GAME OVER</h2>
         <p className="text-base text-yellow-400 mb-8">Final Score: {score}</p>
         <button 
             onClick={onRestart}
             className="bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
         >
-            Try Again
+            Main Menu
         </button>
     </div>
 );
@@ -59,18 +59,18 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({ score, onNextLevel
             onClick={onNextLevel}
             className="bg-gradient-to-r from-teal-500 to-green-500 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
         >
-            {isLastLevel ? 'Main Menu' : 'Next Level'}
+            {isLastLevel ? 'Main Menu' : 'Upgrades'}
         </button>
     </div>
 );
 
-interface UIOverlayProps extends UIState {
+interface UIOverlayProps extends Omit<UIState, 'experience' | 'upgrades'> {
     onToggleMute: () => void;
 }
 
-export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, level, isWerewolf, werewolfTimer, isMuted, onToggleMute }) => {
-    const healthPercentage = (health / C.PLAYER_MAX_HEALTH) * 100;
-    const manaPercentage = (mana / C.PLAYER_MAX_MANA) * 100;
+export const UIOverlay: React.FC<UIOverlayProps> = ({ health, maxHealth, mana, maxMana, score, level, isWerewolf, werewolfTimer, isMuted, onToggleMute, lives }) => {
+    const healthPercentage = (health / maxHealth) * 100;
+    const manaPercentage = (mana / maxMana) * 100;
     const werewolfPercentage = (werewolfTimer / C.WEREWOLF_DURATION) * 100;
 
     return (
@@ -99,14 +99,13 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, level
                 )}
             </div>
 
-            {/* Score and Weapon */}
             <div className="absolute top-5 right-5 text-right">
+                <div>LIVES: {lives}</div>
                 <div>LEVEL: {level}/{LEVELS.length}</div>
                 <div>SCORE: {score}</div>
                 <div>{isWerewolf ? 'CLAWS' : 'DAGGERS'}</div>
             </div>
             
-             {/* Controls & Mute */}
             <div className="absolute bottom-5 right-5 text-slate-400 text-right leading-tight">
                  <button onClick={onToggleMute} className="pointer-events-auto hover:text-white mb-2">
                     {isMuted ? 'UNMUTE [M]' : 'MUTE [M]'}
@@ -116,6 +115,94 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, mana, score, level
                 <div>J: Attack</div>
                 <div>K: Pendant Shard</div>
             </div>
+        </div>
+    );
+};
+
+interface UpgradeScreenProps {
+    uiState: UIState;
+    onPurchase: (upgrade: keyof PlayerUpgrades) => void;
+    onContinue: () => void;
+}
+
+const UpgradeButton: React.FC<{
+    label: string,
+    level: number,
+    maxLevel: number,
+    cost: number | undefined,
+    xp: number,
+    onPurchase: () => void
+}> = ({ label, level, maxLevel, cost, xp, onPurchase }) => {
+    const canAfford = cost !== undefined && xp >= cost;
+    const isMaxed = level >= maxLevel;
+
+    return (
+        <div className="bg-slate-800 p-4 border border-slate-600 flex justify-between items-center">
+            <div>
+                <p className="font-bold text-teal-400">{label}</p>
+                <p className="text-xs text-slate-400">Level: {level} / {maxLevel}</p>
+            </div>
+            <button
+                onClick={onPurchase}
+                disabled={!canAfford || isMaxed}
+                className={`text-xs font-bold py-2 px-4 ${isMaxed ? 'bg-yellow-500 text-black' : canAfford ? 'bg-teal-500 hover:bg-teal-400 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}
+            >
+                {isMaxed ? 'MAX' : cost ? `COST: ${cost} XP` : 'N/A'}
+            </button>
+        </div>
+    );
+};
+
+export const UpgradeScreen: React.FC<UpgradeScreenProps> = ({ uiState, onPurchase, onContinue }) => {
+    const { experience, upgrades } = uiState;
+
+    return (
+         <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-30 p-8 text-white font-mono">
+            <h2 className="text-3xl text-teal-400 font-bold mb-4" style={{ fontFamily: "'Press Start 2P', cursive" }}>UPGRADES</h2>
+            <p className="text-yellow-400 mb-6">Spend XP to unlock permanent upgrades.</p>
+            <p className="text-xl text-yellow-400 mb-8">Available XP: {experience}</p>
+
+            <div className="w-full max-w-md grid grid-cols-1 gap-4 mb-8">
+                <UpgradeButton 
+                    label="Max Health"
+                    level={upgrades.maxHealth}
+                    maxLevel={C.UPGRADE_COSTS.maxHealth.length}
+                    cost={C.UPGRADE_COSTS.maxHealth[upgrades.maxHealth]}
+                    xp={experience}
+                    onPurchase={() => onPurchase('maxHealth')}
+                />
+                 <UpgradeButton 
+                    label="Max Mana"
+                    level={upgrades.maxMana}
+                    maxLevel={C.UPGRADE_COSTS.maxMana.length}
+                    cost={C.UPGRADE_COSTS.maxMana[upgrades.maxMana]}
+                    xp={experience}
+                    onPurchase={() => onPurchase('maxMana')}
+                />
+                 <UpgradeButton 
+                    label="Dagger Damage"
+                    level={upgrades.daggerDamage}
+                    maxLevel={C.UPGRADE_COSTS.daggerDamage.length}
+                    cost={C.UPGRADE_COSTS.daggerDamage[upgrades.daggerDamage]}
+                    xp={experience}
+                    onPurchase={() => onPurchase('daggerDamage')}
+                />
+                 <UpgradeButton 
+                    label="Claw Damage"
+                    level={upgrades.clawDamage}
+                    maxLevel={C.UPGRADE_COSTS.clawDamage.length}
+                    cost={C.UPGRADE_COSTS.clawDamage[upgrades.clawDamage]}
+                    xp={experience}
+                    onPurchase={() => onPurchase('clawDamage')}
+                />
+            </div>
+
+            <button
+                onClick={onContinue}
+                className="bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
+            >
+                Continue
+            </button>
         </div>
     );
 };

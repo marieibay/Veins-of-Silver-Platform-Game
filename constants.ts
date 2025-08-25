@@ -8,6 +8,7 @@ export const PLAYER_SPEED = 5;
 export const PLAYER_JUMP_POWER = 15;
 export const PLAYER_MAX_HEALTH = 100;
 export const PLAYER_MAX_MANA = 80;
+export const PLAYER_STARTING_LIVES = 3;
 
 export const GRAVITY = 0.8;
 export const FRICTION = 0.8;
@@ -36,3 +37,18 @@ export const BOSS_WIDTH = 80;
 export const BOSS_HEIGHT = 96;
 export const BOSS_HEALTH = 500;
 export const BOSS_SPEED = 0.5;
+
+// UPGRADE SYSTEM
+export const UPGRADE_COSTS = {
+  maxHealth: [300, 600, 1200],
+  maxMana: [250, 500, 1000],
+  daggerDamage: [400, 800],
+  clawDamage: [500, 1000],
+};
+
+export const UPGRADE_VALUES = {
+  maxHealth: [125, 150, 175],
+  maxMana: [100, 120, 140],
+  daggerDamage: [20, 25],
+  clawDamage: [40, 50],
+};

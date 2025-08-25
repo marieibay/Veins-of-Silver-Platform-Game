@@ -38,13 +38,11 @@ export const updateProjectiles = (state: GameState) => {
     state.projectiles.forEach((projectile, pIndex) => {
         projectile.x += projectile.velocityX;
 
-        // Remove if off-screen
         if (projectile.x < state.camera.x - 20 || projectile.x > state.camera.x + C.CANVAS_WIDTH + 20) {
             state.projectiles.splice(pIndex, 1);
             return;
         }
 
-        // Collision with enemies
         state.enemies.forEach((enemy) => {
             if (checkCollision(projectile, enemy)) {
                 enemy.health -= C.PENDANT_DAMAGE;
@@ -80,11 +78,10 @@ export const updateEnemies = (state: GameState) => {
 
     if (state.isoldeAttackTimer > 0) {
         state.isoldeAttackTimer--;
-        if (state.isoldeAttackTimer === 45) { // At the peak of the animation
+        if (state.isoldeAttackTimer === 45) {
             enemies.forEach(enemy => {
-                 // Check if enemy is on screen
                 if (enemy.x > state.camera.x && enemy.x < state.camera.x + C.CANVAS_WIDTH) {
-                    enemy.health = 0; // Instantly defeat on-screen enemies
+                    enemy.health = 0;
                     state.particles.push(...createHitParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 30, '#e0e0e0'));
                 }
             });
@@ -157,25 +154,25 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             }
              if (powerUp.type === 'healthVial') {
                 player.health = Math.min(player.maxHealth, player.health + C.HEALTH_VIAL_AMOUNT);
-                particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, '#34d399')); // Green particles for healing
+                particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 20, '#34d399'));
                 audioManager.playSFX('powerUp');
                 powerUps.splice(index, 1);
             }
         }
     });
+    
+    const getDamage = (base: number, upgradeLevel: number, upgradeValues: number[]) => {
+        return upgradeLevel > 0 ? upgradeValues[upgradeLevel - 1] : base;
+    }
 
     if (keys['j'] && !player.attacking && player.attackCooldown === 0) {
         player.attacking = true;
         player.animation.frameTimer = 0;
         
-        if (player.isWerewolf) {
-            player.attackCooldown = C.CLAW_ATTACK_COOLDOWN;
-            player.animation.currentState = 'clawAttack';
-            audioManager.playSFX('clawAttack');
-            const hitbox = { x: player.facing === 1 ? player.x + player.width : player.x - 45, y: player.y, width: 45, height: player.height };
-            enemies.forEach(enemy => {
+        const processAttack = (damage: number, hitbox: { x: number, y: number, width: number, height: number }) => {
+             enemies.forEach(enemy => {
                 if (checkCollision(hitbox, enemy)) {
-                    enemy.health -= C.CLAW_DAMAGE;
+                    enemy.health -= damage;
                     enemy.hitTimer = 10;
                     audioManager.playSFX('enemyHit');
                     particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8));
@@ -188,27 +185,23 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     }
                 }
             });
+        };
+        
+        if (player.isWerewolf) {
+            player.attackCooldown = C.CLAW_ATTACK_COOLDOWN;
+            player.animation.currentState = 'clawAttack';
+            audioManager.playSFX('clawAttack');
+            const hitbox = { x: player.facing === 1 ? player.x + player.width : player.x - 45, y: player.y, width: 45, height: player.height };
+            const damage = getDamage(C.CLAW_DAMAGE, player.upgrades.clawDamage, C.UPGRADE_VALUES.clawDamage);
+            processAttack(damage, hitbox);
             player.velocityX = 5 * player.facing;
         } else {
             player.attackCooldown = C.ATTACK_COOLDOWN;
             player.animation.currentState = 'attack';
             audioManager.playSFX('daggerAttack');
             const hitbox = { x: player.facing === 1 ? player.x + player.width : player.x - 30, y: player.y + player.height / 4, width: 30, height: player.height / 2,};
-            enemies.forEach(enemy => {
-                if (checkCollision(hitbox, enemy)) {
-                    enemy.health -= C.DAGGER_DAMAGE;
-                    enemy.hitTimer = 10;
-                    audioManager.playSFX('enemyHit');
-                    particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 5));
-                    if (enemy.health <= 0) {
-                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
-                        state.player.experience += xp;
-                        state.score += xp;
-                        audioManager.playSFX('enemyDefeated');
-                        particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
-                    }
-                }
-            });
+            const damage = getDamage(C.DAGGER_DAMAGE, player.upgrades.daggerDamage, C.UPGRADE_VALUES.daggerDamage);
+            processAttack(damage, hitbox);
         }
     }
 
@@ -249,10 +242,8 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     });
     
-    // World bounds
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > state.worldWidth) player.x = state.worldWidth - player.width;
-
 
     player.animation.frameTimer++;
     if ((player.animation.currentState === 'attack' && player.animation.frameTimer > 15) || (player.animation.currentState === 'clawAttack' && player.animation.frameTimer > 12)) {
@@ -271,9 +262,12 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 };
 
-
 export const createGameStateForLevel = (levelIndex: number, previousPlayerState?: PlayerState): GameState => {
     const levelData = LEVELS[levelIndex];
+
+    const upgrades = previousPlayerState ? previousPlayerState.upgrades : { maxHealth: 0, maxMana: 0, daggerDamage: 0, clawDamage: 0 };
+    const maxHealth = upgrades.maxHealth > 0 ? C.UPGRADE_VALUES.maxHealth[upgrades.maxHealth - 1] : C.PLAYER_MAX_HEALTH;
+    const maxMana = upgrades.maxMana > 0 ? C.UPGRADE_VALUES.maxMana[upgrades.maxMana - 1] : C.PLAYER_MAX_MANA;
 
     const initialPlayer: PlayerState = {
         x: levelData.playerStart.x,
@@ -285,10 +279,10 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         speed: C.PLAYER_SPEED,
         jumpPower: C.PLAYER_JUMP_POWER,
         onGround: false,
-        health: previousPlayerState ? previousPlayerState.health : C.PLAYER_MAX_HEALTH,
-        maxHealth: C.PLAYER_MAX_HEALTH,
-        mana: C.PLAYER_MAX_MANA,
-        maxMana: C.PLAYER_MAX_MANA,
+        health: maxHealth,
+        maxHealth: maxHealth,
+        mana: maxMana,
+        maxMana: maxMana,
         facing: 1,
         attacking: false,
         attackCooldown: 0,
@@ -298,8 +292,9 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         isWerewolf: false,
         werewolfTimer: 0,
         experience: previousPlayerState ? previousPlayerState.experience : 0,
-        level: 1,
-        damageMultiplier: 1,
+        level: levelIndex,
+        upgrades: upgrades,
+        lives: previousPlayerState ? previousPlayerState.lives : C.PLAYER_STARTING_LIVES,
     };
 
     return {

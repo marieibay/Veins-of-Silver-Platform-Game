@@ -5,6 +5,13 @@ export interface PlayerAnimationState {
   frameTimer: number;
 }
 
+export interface PlayerUpgrades {
+  maxHealth: number;
+  maxMana: number;
+  daggerDamage: number;
+  clawDamage: number;
+}
+
 export interface PlayerState {
   x: number;
   y: number;
@@ -28,8 +35,9 @@ export interface PlayerState {
   werewolfTimer: number;
   experience: number;
   level: number;
-  damageMultiplier: number;
+  upgrades: PlayerUpgrades;
   specialAttackCooldown: number;
+  lives: number;
 }
 
 export interface Platform {
@@ -133,14 +141,23 @@ export interface GameState {
   isoldeAttackTimer: number;
 }
 
-export type GameStatus = 'title' | 'playing' | 'gameOver' | 'victory';
+export type GameStatus = 'title' | 'playing' | 'gameOver' | 'victory' | 'upgrade';
 
 export interface UIState {
     health: number;
+    maxHealth: number;
     mana: number;
+    maxMana: number;
     score: number;
     level: number;
     isWerewolf: boolean;
     werewolfTimer: number;
     isMuted: boolean;
+    experience: number;
+    upgrades: PlayerUpgrades;
+    lives: number;
+}
+
+export interface GameHandle {
+  skipToNextLevel: () => void;
 }

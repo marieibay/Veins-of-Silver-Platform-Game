@@ -2,7 +2,7 @@
 // A simple audio manager to handle sound effects and music.
 // All audio functionality is temporarily disabled to resolve an error.
 
-type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'pendantCast' | 'isoldeAssist';
+type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'pendantCast' | 'isoldeAssist' | 'upgrade';
 
 class AudioManager {
     private _isMuted: boolean = true;
