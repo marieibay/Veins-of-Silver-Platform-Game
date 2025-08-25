@@ -1,4 +1,3 @@
-
 import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
@@ -107,7 +106,7 @@ export const updateEnemies = (state: GameState) => {
         
         if(enemy.type === 'boss') {
             const distance = player.x - enemy.x;
-            if (Math.abs(distance) < 400) {
+            if (Math.abs(distance) < 600) { // Increased aggro range
                 enemy.direction = Math.sign(distance) as 1 | -1;
                 enemy.x += enemy.speed * enemy.direction;
             }
@@ -125,6 +124,15 @@ export const updateEnemies = (state: GameState) => {
     });
 
     state.enemies = state.enemies.filter(enemy => enemy.health > 0);
+    
+    // Check for boss defeat on the final level to reveal the goal
+    if (state.currentLevel === 9 && state.goal.x < 0) { // Level 10 is index 9
+        const bossExists = state.enemies.some(e => e.type === 'boss');
+        if (!bossExists) {
+            state.goal.x = 1400; // Place the goal in the arena
+            audioManager.playSFX('powerUp');
+        }
+    }
 };
 
 export const updatePlayer = (state: GameState, keys: Record<string, boolean>): void => {
