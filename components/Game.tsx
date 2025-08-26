@@ -60,6 +60,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
     }, [currentLevel]);
     
     const toggleMute = useCallback(() => {
+        audioManager.initializeAudioContext(); // Ensure context is created.
         audioManager.toggleMute();
         updateUI();
     }, [updateUI]);
@@ -124,6 +125,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
     }, [gameStatus, updateUI, currentLevel]);
     
     const startGame = () => {
+        audioManager.initializeAudioContext(); // Initialize on user gesture
         setCurrentLevel(0);
         gameStateRef.current = createGameStateForLevel(0);
         updateUI();
