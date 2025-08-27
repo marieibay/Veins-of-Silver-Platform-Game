@@ -1,4 +1,5 @@
 
+
 export interface PlayerAnimationState {
   currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack';
   frameIndex: number;
@@ -38,6 +39,7 @@ export interface PlayerState {
   upgrades: PlayerUpgrades;
   specialAttackCooldown: number;
   lives: number;
+  chargeTimer: number;
 }
 
 export interface Platform {
@@ -62,6 +64,7 @@ export interface Enemy {
   type: EnemyType;
   hitTimer: number; // For hit flash effect
   startX: number; // For patrol range
+  // FIX: Add missing patrolRange property.
   patrolRange: number;
   attackCooldown?: number; // Time until next attack
 }
@@ -74,8 +77,9 @@ export interface Projectile {
   height: number;
   velocityX: number;
   velocityY: number;
-  type: 'pendantShard' | 'darkEnergy';
+  type: 'dagger' | 'darkEnergy';
   owner: 'player' | 'enemy';
+  damage: number;
 }
 
 export type PowerUpType = 'lunarFragment' | 'isoldeAid' | 'healthVial';
@@ -99,6 +103,7 @@ export interface Particle {
   maxLife: number;
   color: string;
   size: number;
+  type?: 'shockwave';
 }
 
 export interface Camera {

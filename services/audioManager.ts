@@ -1,8 +1,9 @@
 
+
 // A simple audio manager to handle sound effects and music.
 // Sounds are generated programmatically using the Web Audio API.
 
-type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'pendantCast' | 'isoldeAssist' | 'upgrade' | 'gameOver' | 'enemyShoot';
+type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'daggerThrow' | 'isoldeAssist' | 'upgrade' | 'gameOver' | 'enemyShoot' | 'chargeStart' | 'chargeRelease';
 
 class AudioManager {
     private audioContext: AudioContext | null = null;
@@ -227,9 +228,8 @@ class AudioManager {
                 this.playSound('triangle', 659, 0.08, 0.3, { frequencyEnd: 783, delay: 0.08 });
                 this.playSound('triangle', 783, 0.08, 0.3, { frequencyEnd: 1046, delay: 0.16 });
                 break;
-            case 'pendantCast':
-                this.playSound('sine', 880, 0.3, 0.3, { frequencyEnd: 1200 });
-                this.playSound('sine', 1318, 0.2, 0.2, { frequencyEnd: 880, delay: 0.05 });
+            case 'daggerThrow':
+                this.playNoise(0.15, 0.2, 3.0);
                 break;
             case 'isoldeAssist':
                 this.playNoise(0.3, 0.4, 5.0);
@@ -241,6 +241,13 @@ class AudioManager {
                 break;
             case 'enemyShoot':
                 this.playSound('square', 300, 0.2, 0.2, { frequencyEnd: 150 });
+                break;
+            case 'chargeStart':
+                this.playSound('sine', 100, 0.3, 0.2, { frequencyEnd: 150 });
+                break;
+            case 'chargeRelease':
+                this.playNoise(0.5, 0.6, 1.0);
+                this.playSound('square', 80, 0.4, 0.4, { frequencyEnd: 40 });
                 break;
             case 'gameOver':
                 // A longer, more dramatic sound with a descending arpeggio and a final low drone.

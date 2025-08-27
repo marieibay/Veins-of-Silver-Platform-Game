@@ -1,4 +1,5 @@
 
+
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 600;
 
@@ -15,10 +16,9 @@ export const FRICTION = 0.8;
 
 export const ATTACK_COOLDOWN = 20; // in frames
 export const DAGGER_DAMAGE = 15;
-export const PENDANT_COST = 20;
-export const PENDANT_DAMAGE = 25;
-export const PENDANT_SPEED = 10;
-export const PENDANT_COOLDOWN = 30; // 0.5 sec cooldown
+export const DAGGER_THROW_COST = 10;
+export const DAGGER_THROW_SPEED = 12;
+export const DAGGER_THROW_COOLDOWN = 30; // 0.5 sec cooldown
 
 export const WEREWOLF_DURATION = 600; // 10 seconds at 60fps
 export const CLAW_DAMAGE = 30;
@@ -37,6 +37,17 @@ export const BOSS_WIDTH = 80;
 export const BOSS_HEIGHT = 96;
 export const BOSS_HEALTH = 500;
 export const BOSS_SPEED = 0.5;
+
+// CHARGE ATTACK
+export const CHARGE_ATTACK_MAX_TIME = 120; // 2 seconds at 60fps
+export const CHARGE_ATTACK_MIN_TIME = 20;  // 1/3rd of a second to activate
+export const CHARGE_ATTACK_MANA_COST_MIN = 15;
+export const CHARGE_ATTACK_MANA_COST_MAX = 40;
+export const CHARGE_ATTACK_DAMAGE_MIN = 20;
+export const CHARGE_ATTACK_DAMAGE_MAX = 70;
+export const CHARGE_ATTACK_RADIUS_MIN = 50;
+export const CHARGE_ATTACK_RADIUS_MAX = 150;
+
 
 // ENEMY ATTACKS
 export const SEEKER_ATTACK_RANGE = 400;

@@ -1,4 +1,7 @@
 
+
+
+
 import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState } from '../types';
 import * as C from '../constants';
 
@@ -96,7 +99,7 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
 };
 
 export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) => {
-    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf } = player;
+    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf, chargeTimer } = player;
 
     ctx.save();
     ctx.translate(x + width / 2, y);
@@ -104,6 +107,22 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
 
     if (invincibilityTimer > 0 && Math.floor(invincibilityTimer / 5) % 2 === 0) {
         ctx.globalAlpha = 0.5;
+    }
+
+    // Charged Attack Visual Effect
+    if (chargeTimer > 0) {
+        const chargePercent = chargeTimer / C.CHARGE_ATTACK_MAX_TIME;
+        const glowRadius = width / 2 + chargePercent * 20 + Math.sin(Date.now() / 100) * 3;
+        const glowOpacity = 0.2 + chargePercent * 0.5;
+
+        const grad = ctx.createRadialGradient(0, height / 2, 5, 0, height / 2, glowRadius);
+        grad.addColorStop(0, `rgba(77, 204, 189, ${glowOpacity})`);
+        grad.addColorStop(1, 'rgba(77, 204, 189, 0)');
+        
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, height / 2, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     const headSize = 12, neck = 2, torsoH = 18, legH = 18, armW = isWerewolf ? 8 : 6, legW = isWerewolf ? 10 : 8, feetH = 4;
@@ -213,12 +232,42 @@ export const drawPowerUps = (ctx: CanvasRenderingContext2D, powerUps: PowerUp[])
 
 export const drawProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Projectile[]) => {
     projectiles.forEach(p => {
-        if (p.type === 'pendantShard') {
-            const glowSize = p.width * (1.5 + Math.sin(Date.now() / 100) * 0.5);
-            ctx.fillStyle = 'rgba(77, 204, 189, 0.5)';
-            ctx.beginPath(); ctx.arc(p.x + p.width/2, p.y + p.height/2, glowSize, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(p.x, p.y, p.width, p.height);
+        if (p.type === 'dagger') {
+            ctx.save();
+            ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
+
+            if (p.velocityX < 0) {
+                ctx.scale(-1, 1); // Flip horizontally for left-facing throw
+            }
+            
+            const rotation = (p.x / 15); // Spin it based on distance traveled
+            ctx.rotate(rotation);
+
+            // Dagger shape centered around (0,0)
+            const bladeLength = 10;
+            const bladeWidth = 5;
+            const hiltLength = 5;
+            const hiltWidth = 4;
+            const guardWidth = 6;
+
+            // Blade
+            ctx.fillStyle = '#e0e0e0'; // silver
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(bladeLength, -bladeWidth / 2);
+            ctx.lineTo(bladeLength, bladeWidth / 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Hilt
+            ctx.fillStyle = '#8d6e63'; // brown
+            ctx.fillRect(-hiltLength, -hiltWidth / 2, hiltLength, hiltWidth);
+
+            // Guard
+            ctx.fillStyle = '#ababab';
+            ctx.fillRect(-1, -guardWidth/2, 2, guardWidth);
+            
+            ctx.restore();
         } else if (p.type === 'darkEnergy') {
             const glowSize = p.width * (1.8 + Math.sin(Date.now() / 120) * 0.6);
             ctx.fillStyle = 'rgba(192, 77, 246, 0.5)';
@@ -233,8 +282,19 @@ export const drawProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Proj
 export const drawParticles = (ctx: CanvasRenderingContext2D, particles: Particle[]) => {
     particles.forEach(p => {
         p.x += p.velocityX; p.y += p.velocityY;
-        ctx.globalAlpha = p.life / p.maxLife; ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        ctx.globalAlpha = p.life / p.maxLife;
+
+        if (p.type === 'shockwave') {
+            const currentRadius = p.size * ((p.maxLife - p.life) / p.maxLife);
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 8 * (p.life / p.maxLife);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
     });
     ctx.globalAlpha = 1;
 };

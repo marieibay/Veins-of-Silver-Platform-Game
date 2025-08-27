@@ -1,4 +1,7 @@
 
+
+
+
 import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
@@ -15,6 +18,10 @@ export const checkCollision = (
         a.y + a.height > b.y
     );
 };
+
+const getDamage = (base: number, upgradeLevel: number, upgradeValues: number[]) => {
+    return upgradeLevel > 0 ? upgradeValues[upgradeLevel - 1] : base;
+}
 
 const createHitParticles = (x: number, y: number, count: number, color = '#ff4d4d'): Particle[] => {
     const particles: Particle[] = [];
@@ -55,10 +62,10 @@ export const updateProjectiles = (state: GameState) => {
             for (let j = state.enemies.length - 1; j >= 0; j--) {
                 const enemy = state.enemies[j];
                 if (checkCollision(projectile, enemy)) {
-                    enemy.health -= C.PENDANT_DAMAGE;
+                    enemy.health -= projectile.damage;
                     enemy.hitTimer = 10;
                     audioManager.playSFX('enemyHit');
-                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#4dccbd'));
+                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#e0e0e0'));
                     
                     if (enemy.health <= 0) {
                         const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
@@ -74,7 +81,7 @@ export const updateProjectiles = (state: GameState) => {
             }
         } else if (projectile.owner === 'enemy') {
             if (state.player.invincibilityTimer === 0 && checkCollision(projectile, state.player)) {
-                state.player.health -= C.SEEKER_PROJECTILE_DAMAGE;
+                state.player.health -= projectile.damage;
                 state.player.invincibilityTimer = 60; // 1 second invincibility
                 audioManager.playSFX('playerHurt');
                 state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
@@ -85,12 +92,13 @@ export const updateProjectiles = (state: GameState) => {
 };
 
 export const updateParticles = (state: GameState) => {
-    state.particles.forEach((p, index) => {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
         p.life--;
         if (p.life <= 0) {
-            state.particles.splice(index, 1);
+            state.particles.splice(i, 1);
         }
-    });
+    }
 };
 
 export const updateEnemies = (state: GameState) => {
@@ -146,6 +154,7 @@ export const updateEnemies = (state: GameState) => {
                     velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED,
                     type: 'darkEnergy',
                     owner: 'enemy',
+                    damage: C.SEEKER_PROJECTILE_DAMAGE,
                 };
                 state.projectiles.push(projectile);
                 audioManager.playSFX('enemyShoot');
@@ -194,6 +203,57 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         if (player.werewolfTimer === 0) player.isWerewolf = false;
     }
 
+    // Handle Charge Attack
+    if (keys['l'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN) {
+        if (player.chargeTimer === 0) {
+            audioManager.playSFX('chargeStart');
+        }
+        player.chargeTimer = Math.min(C.CHARGE_ATTACK_MAX_TIME, player.chargeTimer + 1);
+    } else if (player.chargeTimer > 0) { // Released key or no longer meets conditions
+        if (player.chargeTimer >= C.CHARGE_ATTACK_MIN_TIME) {
+            const chargeRatio = (player.chargeTimer - C.CHARGE_ATTACK_MIN_TIME) / (C.CHARGE_ATTACK_MAX_TIME - C.CHARGE_ATTACK_MIN_TIME);
+            const manaCost = Math.floor(C.CHARGE_ATTACK_MANA_COST_MIN + (C.CHARGE_ATTACK_MANA_COST_MAX - C.CHARGE_ATTACK_MANA_COST_MIN) * chargeRatio);
+
+            if (player.mana >= manaCost) {
+                player.mana -= manaCost;
+                const damage = Math.floor(C.CHARGE_ATTACK_DAMAGE_MIN + (C.CHARGE_ATTACK_DAMAGE_MAX - C.CHARGE_ATTACK_DAMAGE_MIN) * chargeRatio);
+                const radius = C.CHARGE_ATTACK_RADIUS_MIN + (C.CHARGE_ATTACK_RADIUS_MAX - C.CHARGE_ATTACK_RADIUS_MIN) * chargeRatio;
+                
+                audioManager.playSFX('chargeRelease');
+
+                const playerCenterX = player.x + player.width / 2;
+                const playerCenterY = player.y + player.height / 2;
+                
+                particles.push({
+                    id: Math.random(), x: playerCenterX, y: playerCenterY, velocityX: 0, velocityY: 0,
+                    life: 30, maxLife: 30, color: '#4dccbd', size: radius, type: 'shockwave'
+                });
+
+                enemies.forEach(enemy => {
+                    const enemyCenterX = enemy.x + enemy.width / 2;
+                    const enemyCenterY = enemy.y + enemy.height / 2;
+                    const distance = Math.sqrt(Math.pow(playerCenterX - enemyCenterX, 2) + Math.pow(playerCenterY - enemyCenterY, 2));
+
+                    if (distance <= radius + (enemy.width / 2)) {
+                        enemy.health -= damage;
+                        enemy.hitTimer = 10;
+                        audioManager.playSFX('enemyHit');
+                        particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
+                        if (enemy.health <= 0) {
+                            const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                            state.player.experience += xp;
+                            state.score += xp;
+                            audioManager.playSFX('enemyDefeated');
+                            particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                        }
+                    }
+                });
+            }
+        }
+        player.chargeTimer = 0; // Reset
+    }
+
+
     powerUps.forEach((powerUp, index) => {
         if (checkCollision(player, powerUp)) {
             if (powerUp.type === 'lunarFragment' && !player.isWerewolf) {
@@ -217,11 +277,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     });
     
-    const getDamage = (base: number, upgradeLevel: number, upgradeValues: number[]) => {
-        return upgradeLevel > 0 ? upgradeValues[upgradeLevel - 1] : base;
-    }
-
-    if (keys['j'] && !player.attacking && player.attackCooldown === 0) {
+    if (keys['j'] && !player.attacking && player.attackCooldown === 0 && player.chargeTimer === 0) {
         player.attacking = true;
         player.animation.frameTimer = 0;
         
@@ -261,25 +317,30 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     }
 
-    if (keys['k'] && player.specialAttackCooldown === 0 && player.mana >= C.PENDANT_COST) {
-        player.mana -= C.PENDANT_COST;
-        player.specialAttackCooldown = C.PENDANT_COOLDOWN;
-        audioManager.playSFX('pendantCast');
+    if (keys['k'] && player.specialAttackCooldown === 0 && player.mana >= C.DAGGER_THROW_COST && player.chargeTimer === 0) {
+        player.mana -= C.DAGGER_THROW_COST;
+        player.specialAttackCooldown = C.DAGGER_THROW_COOLDOWN;
+        audioManager.playSFX('daggerThrow');
+        const damage = getDamage(C.DAGGER_DAMAGE, player.upgrades.daggerDamage, C.UPGRADE_VALUES.daggerDamage);
+        
         state.projectiles.push({
             id: Math.random(),
             x: player.x + (player.facing === 1 ? player.width : 0),
-            y: player.y + player.height / 2 - 5,
-            width: 10,
-            height: 10,
-            velocityX: C.PENDANT_SPEED * player.facing,
+            y: player.y + player.height / 2 - 3,
+            width: 18,
+            height: 6,
+            velocityX: C.DAGGER_THROW_SPEED * player.facing,
             velocityY: 0,
-            type: 'pendantShard',
+            type: 'dagger',
             owner: 'player',
+            damage: damage,
         });
-        particles.push(...createHitParticles(player.x + player.width/2, player.y + player.height/2, 10, '#4dccbd'));
+        particles.push(...createHitParticles(player.x + player.width/2, player.y + player.height/2, 5, '#e0e0e0'));
     }
 
-    if (!player.attacking || player.isWerewolf) {
+    if (player.chargeTimer > 0) {
+        player.velocityX *= C.FRICTION;
+    } else if (!player.attacking || player.isWerewolf) {
         if (keys['a'] || keys['arrowleft']) { player.velocityX = -player.speed; player.facing = -1; } 
         else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
         else { if(!player.attacking) player.velocityX *= C.FRICTION; }
@@ -352,6 +413,7 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         level: levelIndex,
         upgrades: upgrades,
         lives: previousPlayerState ? previousPlayerState.lives : C.PLAYER_STARTING_LIVES,
+        chargeTimer: 0,
     };
 
     return {
