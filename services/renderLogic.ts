@@ -59,6 +59,15 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
             ctx.fillStyle = '#8b0000';
             ctx.fillRect(enemy.x + 12, enemy.y + 7, 3, 2); ctx.fillRect(enemy.x + 17, enemy.y + 7, 3, 2);
         } else if (enemy.type === 'seeker') {
+            // New: charge-up glow
+            if (enemy.attackCooldown && enemy.attackCooldown > 0 && enemy.attackCooldown < 30) {
+                const glowSize = enemy.width * (1.5 + Math.sin(Date.now() / 50));
+                ctx.fillStyle = `rgba(255, 77, 77, ${0.4 * (1 - enemy.attackCooldown / 30)})`;
+                ctx.beginPath();
+                ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, glowSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             ctx.fillStyle = '#4d0000';
             ctx.globalAlpha = (0.5 + Math.sin(Date.now() / 200) * 0.2) * opacity;
             ctx.fillRect(enemy.x - 5, enemy.y - 5, enemy.width + 10, enemy.height + 10);
@@ -114,17 +123,41 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
     if (animation.currentState === 'attack') {
         const attackProgress = player.animation.frameTimer / 15, attackReach = 25 * Math.sin(attackProgress * Math.PI); 
         ctx.fillStyle = tunic; ctx.fillRect(0, headSize + neck + 4, 15, armW);
-        ctx.fillStyle = daggerBlade; ctx.fillRect(15, headSize + neck + 3, attackReach, armW-2);
-        ctx.strokeStyle = 'rgba(236, 239, 241, 0.8)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, headSize + neck + 8, attackReach + 5, -0.2 * Math.PI, 0.2 * Math.PI); ctx.stroke();
+        
+        // Dagger blade as a polygon for a sharper look
+        const daggerBaseX = 15;
+        const daggerBaseY = headSize + neck + 3;
+        ctx.fillStyle = daggerBlade;
+        ctx.beginPath();
+        ctx.moveTo(daggerBaseX, daggerBaseY);
+        ctx.lineTo(daggerBaseX + attackReach, daggerBaseY + (armW-2)/2);
+        ctx.lineTo(daggerBaseX, daggerBaseY + armW-2);
+        ctx.closePath();
+        ctx.fill();
+
+        // New "swoosh" effect that's less arrow-like
+        ctx.strokeStyle = `rgba(236, 239, 241, ${0.8 * Math.sin(attackProgress * Math.PI)})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(daggerBaseX - 5, headSize + neck + 8, attackReach, -0.25 * Math.PI, 0.25 * Math.PI);
+        ctx.stroke();
     } else if (animation.currentState === 'clawAttack') {
         const attackProgress = player.animation.frameTimer / 12, lunge = 15 * Math.sin(attackProgress * Math.PI), armLungeX = lunge - 10;
         ctx.fillStyle = tunic; ctx.fillRect(armLungeX, headSize + neck + 4, 25, armW);
-        ctx.fillStyle = '#ffffff';
+
+        // Replaced triangles with curved claw slashes for a more organic feel
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * Math.sin(attackProgress * Math.PI)})`;
+        ctx.lineWidth = 3;
+        
         for (let i = 0; i < 3; i++) {
-            const clawBaseY = headSize + neck + 4 + (i * (armW / 2.5));
-            ctx.beginPath(); ctx.moveTo(armLungeX + 25, clawBaseY); ctx.lineTo(armLungeX + 50, clawBaseY + (armW / 4)); ctx.lineTo(armLungeX + 25, clawBaseY + (armW / 2)); ctx.fill();
+            const yOffset = (i - 1) * 8; // Spread them out vertically
+            const xOffset = Math.random() * 5; // Add some jitter
+            ctx.beginPath();
+            ctx.moveTo(armLungeX + 25 + xOffset, headSize + neck + 8 + yOffset);
+            ctx.quadraticCurveTo(armLungeX + 45, headSize + neck + 12 + yOffset, armLungeX + 60, headSize + neck + 4 + yOffset);
+            ctx.stroke();
         }
+        
         ctx.strokeStyle = 'rgba(192, 77, 246, 0.8)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(lunge, headSize + neck + 10, 35, -0.3 * Math.PI, 0.3 * Math.PI); ctx.stroke();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(lunge, headSize + neck + 10, 40, -0.25 * Math.PI, 0.25 * Math.PI); ctx.stroke();
     } else {
@@ -186,6 +219,13 @@ export const drawProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Proj
             ctx.beginPath(); ctx.arc(p.x + p.width/2, p.y + p.height/2, glowSize, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(p.x, p.y, p.width, p.height);
+        } else if (p.type === 'darkEnergy') {
+            const glowSize = p.width * (1.8 + Math.sin(Date.now() / 120) * 0.6);
+            ctx.fillStyle = 'rgba(192, 77, 246, 0.5)';
+            ctx.beginPath(); ctx.arc(p.x + p.width/2, p.y + p.height/2, glowSize/2, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.arc(p.x + p.width/2, p.y + p.height/2, p.width/2, 0, Math.PI*2); ctx.fill();
         }
     });
 };

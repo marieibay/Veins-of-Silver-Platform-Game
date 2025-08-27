@@ -38,6 +38,12 @@ export const BOSS_HEIGHT = 96;
 export const BOSS_HEALTH = 500;
 export const BOSS_SPEED = 0.5;
 
+// ENEMY ATTACKS
+export const SEEKER_ATTACK_RANGE = 400;
+export const SEEKER_ATTACK_COOLDOWN = 120; // 2 seconds at 60fps
+export const SEEKER_PROJECTILE_SPEED = 4;
+export const SEEKER_PROJECTILE_DAMAGE = 10;
+
 // UPGRADE SYSTEM
 export const UPGRADE_COSTS = {
   maxHealth: [300, 600, 1200],

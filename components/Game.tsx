@@ -1,8 +1,7 @@
-
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { GameState, GameStatus, UIState, PlayerUpgrades, GameHandle } from '../types';
 import * as C from '../constants';
-import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen } from './UI';
+import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, IntroScreen, PauseScreen } from './UI';
 import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles } from '../services/gameLogic';
 import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
@@ -126,11 +125,15 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
     
     const startGame = () => {
         audioManager.initializeAudioContext(); // Initialize on user gesture
+        audioManager.playTitleMusic();
         setCurrentLevel(0);
         gameStateRef.current = createGameStateForLevel(0);
         updateUI();
+        setGameStatus('intro');
+    };
+
+    const handleIntroComplete = () => {
         setGameStatus('playing');
-        audioManager.playMusic();
     };
     
     const handleProceed = () => {
@@ -164,7 +167,6 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             gameStateRef.current = createGameStateForLevel(nextLevelIndex, gameStateRef.current.player);
             updateUI();
             setGameStatus('playing');
-            audioManager.playMusic();
         } else {
             setGameStatus('title');
         }
@@ -190,7 +192,16 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             const key = e.key.toLowerCase();
             if (key === 'm') {
                 toggleMute();
-            } else {
+            } else if (key === 'p') {
+                if (gameStatus === 'playing') {
+                    setGameStatus('paused');
+                    audioManager.pauseMusic();
+                } else if (gameStatus === 'paused') {
+                    setGameStatus('playing');
+                    // The main useEffect will handle resuming the music via playMusic()
+                }
+            }
+            else {
                 keysPressed.current[key] = true;
             }
         };
@@ -203,19 +214,34 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [toggleMute]);
+    }, [toggleMute, gameStatus]);
 
     useEffect(() => {
         if (gameStatus === 'playing') {
-            audioManager.playMusic();
+            // Logic to select music based on level
+            if (currentLevel === LEVELS.length - 1) {
+                audioManager.playBossMusic(); // Final boss music
+            } else if (currentLevel > 0 && currentLevel < (LEVELS.length - 1) && currentLevel % 2 !== 0) {
+                // Play new alternate music on levels 2, 4, 6, 8 (indices 1, 3, 5, 7)
+                audioManager.playMusic2();
+            } else {
+                // Play original music on levels 1, 3, 5, 7, 9 (indices 0, 2, 4, 6, 8)
+                audioManager.playMusic();
+            }
             animationFrameId.current = requestAnimationFrame(gameLoop);
         } else {
-            audioManager.stopMusic();
+            cancelAnimationFrame(animationFrameId.current);
+            if (gameStatus !== 'paused' && gameStatus !== 'intro') {
+                audioManager.stopMusic();
+                if (gameStatus === 'gameOver') {
+                    audioManager.playSFX('gameOver');
+                }
+            }
         }
         return () => {
             cancelAnimationFrame(animationFrameId.current);
         };
-    }, [gameStatus, gameLoop]);
+    }, [gameStatus, gameLoop, currentLevel]);
 
     const checkCollision = (a: any, b: any) => {
         return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
@@ -227,7 +253,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             className="relative overflow-hidden border-4 border-slate-800 shadow-2xl" 
             style={{ width: C.CANVAS_WIDTH, height: C.CANVAS_HEIGHT }}
         >
-            {gameStatus !== 'title' && (
+            {gameStatus !== 'title' && gameStatus !== 'intro' && (
                 <canvas 
                     ref={canvasRef} 
                     width={C.CANVAS_WIDTH} 
@@ -236,7 +262,9 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
                 />
             )}
             {gameStatus === 'title' && <TitleScreen onStart={startGame} />}
-            {gameStatus === 'playing' && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
+            {gameStatus === 'intro' && <IntroScreen onComplete={handleIntroComplete} />}
+            {(gameStatus === 'playing' || gameStatus === 'paused') && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
+            {gameStatus === 'paused' && <PauseScreen />}
             {gameStatus === 'gameOver' && <GameOverScreen score={uiState.score} onRestart={restartGame} />}
             {gameStatus === 'victory' && <VictoryScreen score={uiState.score} onNextLevel={handleProceed} isLastLevel={currentLevel >= LEVELS.length - 1} />}
             {gameStatus === 'upgrade' && <UpgradeScreen uiState={uiState} onPurchase={handlePurchaseUpgrade} onContinue={handleNextLevel} />}

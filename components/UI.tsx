@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UIState, PlayerUpgrades } from '../types';
 import * as C from '../constants';
 import { LEVELS } from '../data/levels';
@@ -26,6 +26,69 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => (
     </div>
 );
 
+interface IntroScreenProps {
+    onComplete: () => void;
+}
+
+export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
+    const lines = [
+        "The year is 1888.",
+        "The city of Silverfall is choked by industrial smog...",
+        "...and a deeper, more sinister shadow.",
+        "Hunted by the Council for your cursed bloodline,",
+        "your only ally is Isolde, a vampire with her own secrets.",
+        "The hunt is on. Survive the night."
+    ];
+
+    const [currentLineIndex, setCurrentLineIndex] = useState(0);
+    const [typedText, setTypedText] = useState('');
+    const [isComplete, setIsComplete] = useState(false);
+
+    useEffect(() => {
+        if (currentLineIndex >= lines.length) {
+            setIsComplete(true);
+            return;
+        }
+
+        const line = lines[currentLineIndex];
+        let charIndex = 0;
+        setTypedText(''); // Reset for new line
+
+        const typingInterval = setInterval(() => {
+            if (charIndex < line.length) {
+                setTypedText(prev => prev + line.charAt(charIndex));
+                charIndex++;
+            } else {
+                clearInterval(typingInterval);
+                const timeoutId = setTimeout(() => {
+                    setCurrentLineIndex(prev => prev + 1);
+                }, 1500); // Pause before next line
+                return () => clearTimeout(timeoutId);
+            }
+        }, 50); // Typing speed
+
+        return () => clearInterval(typingInterval);
+    }, [currentLineIndex]);
+
+    return (
+        <div className="absolute inset-0 bg-black flex flex-col justify-center items-center z-30 p-8 text-center cursor-pointer" onClick={onComplete}>
+            <div className="max-w-xl text-slate-300 text-lg h-48" style={{ fontFamily: "'Courier New', monospace" }}>
+                {lines.map((line, index) => (
+                     <p key={index} className={`transition-opacity duration-1000 ${index <= currentLineIndex ? 'opacity-100' : 'opacity-0'}`}>
+                        {index === currentLineIndex ? typedText : (index < currentLineIndex ? line : ' ')}
+                    </p>
+                ))}
+            </div>
+             <button
+                className="absolute bottom-10 right-10 text-slate-400 font-bold uppercase tracking-widest animate-pulse hover:text-white pointer-events-none"
+                style={{ fontFamily: "'Press Start 2P', cursive" }}
+            >
+                {isComplete ? 'Continue' : 'Skip'}
+            </button>
+        </div>
+    );
+};
+
 
 interface GameOverScreenProps {
     score: number;
@@ -34,11 +97,22 @@ interface GameOverScreenProps {
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center z-30">
-        <h2 className="text-3xl text-red-500 font-bold mb-4">GAME OVER</h2>
-        <p className="text-base text-yellow-400 mb-8">Final Score: {score}</p>
+        <h2 
+            className="text-5xl text-red-400 text-glow mb-4" 
+            style={{ fontFamily: "'Press Start 2P', cursive" }}
+        >
+            GAME OVER
+        </h2>
+        <p 
+            className="text-base text-yellow-400 mb-8"
+            style={{ fontFamily: "'Press Start 2P', cursive" }}
+        >
+            Final Score: {score}
+        </p>
         <button 
             onClick={onRestart}
             className="bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
+            style={{ fontFamily: "'Press Start 2P', cursive" }}
         >
             Main Menu
         </button>
@@ -114,6 +188,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, maxHealth, mana, m
                 <div>SPACE: Jump</div>
                 <div>J: Attack</div>
                 <div>K: Pendant Shard</div>
+                <div>P: Pause</div>
             </div>
         </div>
     );
@@ -206,3 +281,9 @@ export const UpgradeScreen: React.FC<UpgradeScreenProps> = ({ uiState, onPurchas
         </div>
     );
 };
+
+export const PauseScreen: React.FC = () => (
+    <div className="absolute inset-0 bg-black bg-opacity-60 flex flex-col justify-center items-center z-30">
+        <h2 className="text-4xl text-white text-glow" style={{ fontFamily: "'Press Start 2P', cursive" }}>PAUSED</h2>
+    </div>
+);

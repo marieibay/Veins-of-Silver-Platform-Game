@@ -2,11 +2,26 @@
 // A simple audio manager to handle sound effects and music.
 // Sounds are generated programmatically using the Web Audio API.
 
-type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'pendantCast' | 'isoldeAssist' | 'upgrade';
+type SoundName = 'jump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'pendantCast' | 'isoldeAssist' | 'upgrade' | 'gameOver' | 'enemyShoot';
 
 class AudioManager {
     private audioContext: AudioContext | null = null;
-    private _isMuted: boolean = true;
+    private _isMuted: boolean = false;
+    private masterGain: GainNode | null = null;
+    private musicSource: AudioBufferSourceNode | null = null;
+    private currentTrackBuffer: AudioBuffer | null = null;
+    
+    private titleMusicBuffer: AudioBuffer | null = null;
+    private isTitleMusicLoading: boolean = false;
+
+    private musicBuffer: AudioBuffer | null = null;
+    private isMusicLoading: boolean = false;
+    
+    private musicBuffer2: AudioBuffer | null = null;
+    private isMusic2Loading: boolean = false;
+
+    private bossMusicBuffer: AudioBuffer | null = null;
+    private isBossMusicLoading: boolean = false;
 
     constructor() {
         // Defer AudioContext creation until a user gesture.
@@ -23,6 +38,11 @@ class AudioManager {
             const AudioContext = w.AudioContext || w.webkitAudioContext;
             if (AudioContext) {
                 this.audioContext = new AudioContext();
+                this.masterGain = this.audioContext.createGain();
+                this.masterGain.connect(this.audioContext.destination);
+                if (this._isMuted) {
+                    this.masterGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+                }
             } else {
                  console.warn("Web Audio API is not supported in this browser.");
             }
@@ -30,6 +50,83 @@ class AudioManager {
             console.error("Could not create audio context", e);
         }
     }
+
+    public pauseMusic() {
+        if (this.audioContext && this.audioContext.state === 'running') {
+            this.audioContext.suspend();
+        }
+    }
+
+    public resumeMusic() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+    }
+    
+    private async loadTitleMusic() {
+        if (!this.audioContext || this.titleMusicBuffer || this.isTitleMusicLoading) return;
+        
+        this.isTitleMusicLoading = true;
+        try {
+            const response = await fetch('/opener.mp3');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            this.titleMusicBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        } catch (e) {
+            console.error(`Failed to load music from /opener.mp3`, e);
+        } finally {
+            this.isTitleMusicLoading = false;
+        }
+    }
+
+    private async loadRegularMusic() {
+        if (!this.audioContext || this.musicBuffer || this.isMusicLoading) return;
+        
+        this.isMusicLoading = true;
+        try {
+            const response = await fetch('/background-music.mp3');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            this.musicBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        } catch (e) {
+            console.error(`Failed to load music from /background-music.mp3`, e);
+        } finally {
+            this.isMusicLoading = false;
+        }
+    }
+    
+    private async loadRegularMusic2() {
+        if (!this.audioContext || this.musicBuffer2 || this.isMusic2Loading) return;
+        
+        this.isMusic2Loading = true;
+        try {
+            const response = await fetch('/background-music-2.mp3');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            this.musicBuffer2 = await this.audioContext.decodeAudioData(arrayBuffer);
+        } catch (e) {
+            console.error(`Failed to load music from /background-music-2.mp3`, e);
+        } finally {
+            this.isMusic2Loading = false;
+        }
+    }
+
+    private async loadBossMusic() {
+        if (!this.audioContext || this.bossMusicBuffer || this.isBossMusicLoading) return;
+        
+        this.isBossMusicLoading = true;
+        try {
+            const response = await fetch('/boss-music.mp3');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            this.bossMusicBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        } catch (e) {
+            console.error(`Failed to load music from /boss-music.mp3`, e);
+        } finally {
+            this.isBossMusicLoading = false;
+        }
+    }
+
 
     private playSound(
         type: OscillatorType,
@@ -42,7 +139,7 @@ class AudioManager {
             delay?: number
         } = {}
     ) {
-        if (!this.audioContext || this._isMuted) return;
+        if (!this.audioContext || !this.masterGain) return;
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
@@ -52,7 +149,7 @@ class AudioManager {
 
         const startTime = this.audioContext.currentTime + (options.delay || 0);
         
-        gainNode.connect(this.audioContext.destination);
+        gainNode.connect(this.masterGain);
         oscillator.connect(gainNode);
 
         oscillator.type = type;
@@ -70,7 +167,7 @@ class AudioManager {
     }
     
      private playNoise(duration: number, volume: number = 0.5, pitch: number = 1.0) {
-        if (!this.audioContext || this._isMuted) return;
+        if (!this.audioContext || !this.masterGain) return;
         if (this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
@@ -96,13 +193,13 @@ class AudioManager {
         
         noise.connect(bandpass);
         bandpass.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+        gainNode.connect(this.masterGain);
         noise.start();
     }
 
 
     playSFX(name: SoundName) {
-        if (!this.audioContext || this._isMuted) return;
+        if (this._isMuted) return;
         
         switch (name) {
             case 'jump':
@@ -142,23 +239,188 @@ class AudioManager {
                 this.playSound('sine', 587, 0.1, 0.3, { frequencyEnd: 783 });
                 this.playSound('sine', 880, 0.2, 0.3, { frequencyEnd: 1174, delay: 0.1 });
                 break;
+            case 'enemyShoot':
+                this.playSound('square', 300, 0.2, 0.2, { frequencyEnd: 150 });
+                break;
+            case 'gameOver':
+                // A longer, more dramatic sound with a descending arpeggio and a final low drone.
+                this.playSound('triangle', 415, 0.4, 0.3, { frequencyEnd: 380, delay: 0 }); // G#
+                this.playSound('triangle', 330, 0.4, 0.3, { frequencyEnd: 300, delay: 0.3 }); // E
+                this.playSound('triangle', 247, 0.4, 0.3, { frequencyEnd: 220, delay: 0.6 }); // B
+                // Low, long, final note
+                this.playSound('sawtooth', 100, 1.5, 0.5, { frequencyEnd: 40, delay: 0.9 });
+                break;
         }
     }
 
-    playMusic() {
+    public async playTitleMusic() {
         this.initializeAudioContext();
-        // no-op for now
+        if (!this.audioContext || !this.masterGain) return;
+        
+        await this.loadTitleMusic();
+        if (!this.titleMusicBuffer) return;
+
+        // If the correct music is already loaded and we're just paused, resume.
+        if (this.musicSource && this.currentTrackBuffer === this.titleMusicBuffer && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            return;
+        }
+
+        // If this music is already playing, do nothing.
+        if (this.musicSource && this.currentTrackBuffer === this.titleMusicBuffer && this.audioContext.state === 'running') {
+            return;
+        }
+
+        this.stopMusic();
+        
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+
+        this.musicSource = this.audioContext.createBufferSource();
+        this.musicSource.buffer = this.titleMusicBuffer;
+        this.currentTrackBuffer = this.titleMusicBuffer;
+        this.musicSource.loop = true;
+        
+        const musicGain = this.audioContext.createGain();
+        musicGain.gain.value = 0.4;
+        
+        this.musicSource.connect(musicGain);
+        musicGain.connect(this.masterGain);
+        this.musicSource.start();
     }
 
+    async playMusic() {
+        this.initializeAudioContext();
+        if (!this.audioContext || !this.masterGain) return;
+        
+        await this.loadRegularMusic();
+        if (!this.musicBuffer) return;
+
+        // If the correct music is already loaded and we're just paused, resume.
+        if (this.musicSource && this.currentTrackBuffer === this.musicBuffer && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            return;
+        }
+
+        // If this music is already playing, do nothing.
+        if (this.musicSource && this.currentTrackBuffer === this.musicBuffer && this.audioContext.state === 'running') {
+            return;
+        }
+
+        this.stopMusic();
+        
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+
+        this.musicSource = this.audioContext.createBufferSource();
+        this.musicSource.buffer = this.musicBuffer;
+        this.currentTrackBuffer = this.musicBuffer;
+        this.musicSource.loop = true;
+        
+        const musicGain = this.audioContext.createGain();
+        musicGain.gain.value = 0.4;
+        
+        this.musicSource.connect(musicGain);
+        musicGain.connect(this.masterGain);
+        this.musicSource.start();
+    }
+    
+    async playMusic2() {
+        this.initializeAudioContext();
+        if (!this.audioContext || !this.masterGain) return;
+        
+        await this.loadRegularMusic2();
+        if (!this.musicBuffer2) return;
+
+        if (this.musicSource && this.currentTrackBuffer === this.musicBuffer2 && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            return;
+        }
+
+        if (this.musicSource && this.currentTrackBuffer === this.musicBuffer2 && this.audioContext.state === 'running') {
+            return;
+        }
+
+        this.stopMusic();
+        
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+
+        this.musicSource = this.audioContext.createBufferSource();
+        this.musicSource.buffer = this.musicBuffer2;
+        this.currentTrackBuffer = this.musicBuffer2;
+        this.musicSource.loop = true;
+        
+        const musicGain = this.audioContext.createGain();
+        musicGain.gain.value = 0.4;
+        
+        this.musicSource.connect(musicGain);
+        musicGain.connect(this.masterGain);
+        this.musicSource.start();
+    }
+    
+    async playBossMusic() {
+        this.initializeAudioContext();
+        if (!this.audioContext || !this.masterGain) return;
+
+        await this.loadBossMusic();
+        if (!this.bossMusicBuffer) return;
+        
+        // If the correct music is already loaded and we're just paused, resume.
+        if (this.musicSource && this.currentTrackBuffer === this.bossMusicBuffer && this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            return;
+        }
+
+        // If this music is already playing, do nothing.
+        if (this.musicSource && this.currentTrackBuffer === this.bossMusicBuffer && this.audioContext.state === 'running') {
+            return;
+        }
+        
+        this.stopMusic();
+        
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+
+        this.musicSource = this.audioContext.createBufferSource();
+        this.musicSource.buffer = this.bossMusicBuffer;
+        this.currentTrackBuffer = this.bossMusicBuffer;
+        this.musicSource.loop = true;
+        
+        const musicGain = this.audioContext.createGain();
+        musicGain.gain.value = 0.5; // Slightly louder for intensity
+        
+        this.musicSource.connect(musicGain);
+        musicGain.connect(this.masterGain);
+        this.musicSource.start();
+    }
+
+
     stopMusic() {
-        // no-op for now
+        // Stop buffered music
+        if (this.musicSource) {
+            this.musicSource.stop();
+            this.musicSource.disconnect();
+            this.musicSource = null;
+        }
+        this.currentTrackBuffer = null;
     }
 
     toggleMute() {
+        this.initializeAudioContext();
+        if(!this.audioContext || !this.masterGain) return;
+        
         this._isMuted = !this._isMuted;
-        if (!this._isMuted && this.audioContext && this.audioContext.state === 'suspended') {
+        
+        if (!this._isMuted && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
+
+        this.masterGain.gain.setValueAtTime(this._isMuted ? 0 : 1, this.audioContext.currentTime);
     }
 
     isMuted(): boolean {

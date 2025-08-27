@@ -1,3 +1,4 @@
+
 import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
@@ -34,33 +35,53 @@ const createHitParticles = (x: number, y: number, count: number, color = '#ff4d4
 };
 
 export const updateProjectiles = (state: GameState) => {
-    state.projectiles.forEach((projectile, pIndex) => {
-        projectile.x += projectile.velocityX;
+    for (let i = state.projectiles.length - 1; i >= 0; i--) {
+        const projectile = state.projectiles[i];
 
-        if (projectile.x < state.camera.x - 20 || projectile.x > state.camera.x + C.CANVAS_WIDTH + 20) {
-            state.projectiles.splice(pIndex, 1);
-            return;
+        projectile.x += projectile.velocityX;
+        projectile.y += projectile.velocityY;
+
+        // Remove projectile if it's off-screen
+        if (projectile.x < state.camera.x - 50 || 
+            projectile.x > state.camera.x + C.CANVAS_WIDTH + 50 ||
+            projectile.y < state.camera.y - 50 ||
+            projectile.y > state.camera.y + C.CANVAS_HEIGHT + 50
+            ) {
+            state.projectiles.splice(i, 1);
+            continue;
         }
 
-        state.enemies.forEach((enemy) => {
-            if (checkCollision(projectile, enemy)) {
-                enemy.health -= C.PENDANT_DAMAGE;
-                enemy.hitTimer = 10;
-                audioManager.playSFX('enemyHit');
-                state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#4dccbd'));
-                
-                if (enemy.health <= 0) {
-                    const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
-                    state.player.experience += xp;
-                    state.score += xp;
-                    audioManager.playSFX('enemyDefeated');
-                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+        if (projectile.owner === 'player') {
+            for (let j = state.enemies.length - 1; j >= 0; j--) {
+                const enemy = state.enemies[j];
+                if (checkCollision(projectile, enemy)) {
+                    enemy.health -= C.PENDANT_DAMAGE;
+                    enemy.hitTimer = 10;
+                    audioManager.playSFX('enemyHit');
+                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#4dccbd'));
+                    
+                    if (enemy.health <= 0) {
+                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                        state.player.experience += xp;
+                        state.score += xp;
+                        audioManager.playSFX('enemyDefeated');
+                        state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                    }
+    
+                    state.projectiles.splice(i, 1);
+                    break; // Projectile is gone, stop checking enemies
                 }
-
-                state.projectiles.splice(pIndex, 1);
             }
-        });
-    });
+        } else if (projectile.owner === 'enemy') {
+            if (state.player.invincibilityTimer === 0 && checkCollision(projectile, state.player)) {
+                state.player.health -= C.SEEKER_PROJECTILE_DAMAGE;
+                state.player.invincibilityTimer = 60; // 1 second invincibility
+                audioManager.playSFX('playerHurt');
+                state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
+                state.projectiles.splice(i, 1);
+            }
+        }
+    }
 };
 
 export const updateParticles = (state: GameState) => {
@@ -101,6 +122,33 @@ export const updateEnemies = (state: GameState) => {
              enemy.x += enemy.speed * enemy.direction;
              if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
                 enemy.direction *= -1;
+            }
+
+            // New attack logic for seekers
+            if (enemy.attackCooldown === undefined) enemy.attackCooldown = C.SEEKER_ATTACK_COOLDOWN;
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+
+            const distanceX = player.x - enemy.x;
+            const distanceY = player.y - enemy.y;
+            const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+            if (distance < C.SEEKER_ATTACK_RANGE && enemy.attackCooldown === 0) {
+                enemy.attackCooldown = C.SEEKER_ATTACK_COOLDOWN;
+                
+                const angle = Math.atan2(distanceY, distanceX);
+                const projectile: Projectile = {
+                    id: Math.random(),
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + enemy.height / 2,
+                    width: 12,
+                    height: 12,
+                    velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED,
+                    velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED,
+                    type: 'darkEnergy',
+                    owner: 'enemy',
+                };
+                state.projectiles.push(projectile);
+                audioManager.playSFX('enemyShoot');
             }
         }
         
@@ -224,6 +272,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             width: 10,
             height: 10,
             velocityX: C.PENDANT_SPEED * player.facing,
+            velocityY: 0,
             type: 'pendantShard',
             owner: 'player',
         });

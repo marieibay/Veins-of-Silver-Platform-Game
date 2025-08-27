@@ -63,6 +63,7 @@ export interface Enemy {
   hitTimer: number; // For hit flash effect
   startX: number; // For patrol range
   patrolRange: number;
+  attackCooldown?: number; // Time until next attack
 }
 
 export interface Projectile {
@@ -72,7 +73,8 @@ export interface Projectile {
   width: number;
   height: number;
   velocityX: number;
-  type: 'pendantShard';
+  velocityY: number;
+  type: 'pendantShard' | 'darkEnergy';
   owner: 'player' | 'enemy';
 }
 
@@ -141,7 +143,7 @@ export interface GameState {
   isoldeAttackTimer: number;
 }
 
-export type GameStatus = 'title' | 'playing' | 'gameOver' | 'victory' | 'upgrade';
+export type GameStatus = 'title' | 'intro' | 'playing' | 'gameOver' | 'victory' | 'upgrade' | 'paused';
 
 export interface UIState {
     health: number;
