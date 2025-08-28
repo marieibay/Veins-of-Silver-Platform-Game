@@ -1,8 +1,8 @@
-
 import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
 import { LEVELS } from '../data/levels';
+import { spriteMap } from './assetManager';
 
 export const checkCollision = (
     a: { x: number; y: number; width: number; height: number; },
@@ -454,6 +454,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     if (keys['j'] && !player.attacking && player.attackCooldown === 0 && player.chargeTimer === 0 && !player.isDashing) {
         player.attacking = true;
         player.animation.frameTimer = 0;
+        player.animation.frameIndex = 0;
         
         const processAttack = (damage: number, hitbox: { x: number, y: number, width: number, height: number }) => {
              enemies.forEach(enemy => {
@@ -581,21 +582,48 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > state.worldWidth) player.x = state.worldWidth - player.width;
 
+    // --- NEW ANIMATION LOGIC ---
     player.animation.frameTimer++;
-    if ((player.animation.currentState === 'attack' && player.animation.frameTimer > 15) || (player.animation.currentState === 'clawAttack' && player.animation.frameTimer > 12)) {
-        player.attacking = false;
-    }
 
-    if (player.isDashing) {
-        player.animation.currentState = 'dash';
+    let animSpeed = 10;
+    if (player.animation.currentState === 'run') animSpeed = 6;
+    if (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack') animSpeed = 5;
+
+    const animKey = player.isWerewolf ? 'werewolf' : 'human';
+    const animFrames = spriteMap[animKey][player.animation.currentState] || spriteMap[animKey]['idle'];
+
+    if (player.animation.frameTimer >= animSpeed) {
         player.animation.frameTimer = 0;
-    } else if (!player.attacking) {
-        let newAnimationState: PlayerState['animation']['currentState'] = 'idle';
-        if (!player.onGround) newAnimationState = 'jump';
-        else if (Math.abs(player.velocityX) > 0.1) newAnimationState = 'run';
-
+        
+        if (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack') {
+            if (player.animation.frameIndex < animFrames.length - 1) {
+                player.animation.frameIndex++;
+            } else {
+                player.attacking = false; // End of attack animation
+            }
+        } else {
+            player.animation.frameIndex = (player.animation.frameIndex + 1) % animFrames.length;
+        }
+    }
+    
+    if (!player.attacking) { // Don't interrupt attacks
+        let newAnimationState: PlayerState['animation']['currentState'] = player.animation.currentState;
+        
+        if (player.isDashing) {
+            newAnimationState = 'dash';
+        } else {
+            if (!player.onGround) {
+                newAnimationState = 'jump';
+            } else if (Math.abs(player.velocityX) > 0.1) {
+                newAnimationState = 'run';
+            } else {
+                newAnimationState = 'idle';
+            }
+        }
+    
         if (player.animation.currentState !== newAnimationState) {
             player.animation.currentState = newAnimationState;
+            player.animation.frameIndex = 0;
             player.animation.frameTimer = 0;
         }
     }
