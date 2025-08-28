@@ -6,9 +6,10 @@ import { LEVELS } from '../data/levels';
 
 interface TitleScreenProps {
     onStart: () => void;
+    onShowControls: () => void;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => (
+export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, onShowControls }) => (
     <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-30 p-8 text-center">
         <h1 className="text-5xl text-red-400 text-glow mb-2" style={{ fontFamily: "'Press Start 2P', cursive" }}>VEINS OF SILVER</h1>
         <h2 className="text-xl text-slate-300 mb-8" style={{ fontFamily: "'Press Start 2P', cursive" }}>SHADOWS UNBOUND</h2>
@@ -17,12 +18,21 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => (
             Hunted by a corrupt Council, you must rely on your forbidden bloodline and the aid of a rogue vampire, Isolde, to survive. Can you master your powers and uncover the truth before the shadows consume you?
         </p>
 
-        <button 
-            onClick={onStart}
-            className="start-game-button"
-        >
-            Start Game
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4">
+             <button 
+                onClick={onStart}
+                className="start-game-button"
+            >
+                Start Game
+            </button>
+            <button
+                onClick={onShowControls}
+                className="start-game-button"
+                style={{ background: 'linear-gradient(to right, #4a5568, #2d3748)', borderColor: '#1a202c' }}
+            >
+                Controls
+            </button>
+        </div>
     </div>
 );
 
@@ -290,3 +300,98 @@ export const PauseScreen: React.FC = () => (
         <h2 className="text-4xl text-white text-glow" style={{ fontFamily: "'Press Start 2P', cursive" }}>PAUSED</h2>
     </div>
 );
+
+// New Controls Screen Component
+const KeyCap: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <span className="inline-block bg-slate-700 text-yellow-300 border-2 border-slate-600 rounded px-2 py-1 text-sm leading-none mx-1 font-mono shadow-md whitespace-nowrap">
+        {children}
+    </span>
+);
+
+const ControlRow: React.FC<{ action: string; keys: React.ReactNode; description: string }> = ({ action, keys, description }) => (
+    <>
+        <div className="font-bold text-slate-200">{action}</div>
+        <div className="text-right">{keys}</div>
+        <div className="col-span-2 text-slate-400 text-xs pb-2 border-b border-slate-800">{description}</div>
+    </>
+);
+
+interface ControlsScreenProps {
+    onBack: () => void;
+}
+
+export const ControlsScreen: React.FC<ControlsScreenProps> = ({ onBack }) => {
+    return (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-40 p-4 text-white">
+            <h2 className="text-4xl text-yellow-400 text-glow mb-6" style={{ fontFamily: "'Press Start 2P', cursive" }}>
+                CONTROLS
+            </h2>
+
+            <div className="w-full max-w-3xl bg-slate-900 bg-opacity-80 border-2 border-slate-700 p-6 text-slate-300 grid grid-cols-2 gap-x-8 gap-y-2 overflow-y-auto" style={{ fontFamily: "'Courier New', monospace", maxHeight: '70vh' }}>
+                <div className="col-span-2 text-lg text-teal-400 font-bold tracking-widest pb-1 mb-2">MOVEMENT</div>
+                <ControlRow
+                    action="Move"
+                    keys={<><KeyCap>A</KeyCap><KeyCap>D</KeyCap> or <KeyCap>←</KeyCap><KeyCap>→</KeyCap></>}
+                    description="Walk left or right. Your character will automatically face the direction of movement."
+                />
+                 <ControlRow
+                    action="Jump / Double Jump"
+                    keys={<><KeyCap>Space</KeyCap> or <KeyCap>W</KeyCap> or <KeyCap>↑</KeyCap></>}
+                    description="Press once to jump. Press again while in mid-air to perform a double jump."
+                />
+                 <ControlRow
+                    action="Wall Slide / Jump"
+                    keys={<>(Automatic)</>}
+                    description="Hold the move key towards a wall while falling to slide down. Press jump to leap off the wall."
+                />
+
+                <div className="col-span-2 text-lg text-teal-400 font-bold tracking-widest pb-1 mb-2 mt-4">COMBAT</div>
+                 <ControlRow
+                    action="Melee Attack"
+                    keys={<KeyCap>J</KeyCap>}
+                    description="Perform a quick dagger slash. If transformed, this becomes a powerful claw attack."
+                />
+                <ControlRow
+                    action="Throw Dagger"
+                    keys={<KeyCap>K</KeyCap>}
+                    description="Throw a spectral dagger. Consumes a small amount of mana."
+                />
+                <ControlRow
+                    action="Dash"
+                    keys={<KeyCap>H</KeyCap>}
+                    description="Quickly dash forward, passing through enemies and projectiles. Consumes mana."
+                />
+                <ControlRow
+                    action="Parry"
+                    keys={<KeyCap>L</KeyCap>}
+                    description="Enter a brief defensive stance. A successful parry staggers enemies and can reflect projectiles."
+                />
+                <ControlRow
+                    action="Charged Blast"
+                    keys={<>Hold <KeyCap>S</KeyCap> or <KeyCap>↓</KeyCap></>}
+                    description="Hold to charge a powerful area-of-effect attack. Consumes more mana for a longer charge."
+                />
+
+                <div className="col-span-2 text-lg text-teal-400 font-bold tracking-widest pb-1 mb-2 mt-4">SYSTEM</div>
+                <ControlRow
+                    action="Pause Game"
+                    keys={<KeyCap>P</KeyCap>}
+                    description="Pauses and resumes the game at any time."
+                />
+                <ControlRow
+                    action="Mute Audio"
+                    keys={<KeyCap>M</KeyCap>}
+                    description="Toggles all sound and music on or off."
+                />
+            </div>
+
+            <button
+                onClick={onBack}
+                className="mt-8 bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
+                style={{ fontFamily: "'Press Start 2P', cursive" }}
+            >
+                Back
+            </button>
+        </div>
+    );
+};

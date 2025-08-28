@@ -1,5 +1,6 @@
 
 
+
 export interface PlayerAnimationState {
   currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack' | 'dash' | 'wallSlide' | 'parry';
   frameIndex: number;
@@ -185,7 +186,7 @@ export interface GameState {
   hazards: Hazard[];
 }
 
-export type GameStatus = 'title' | 'intro' | 'playing' | 'gameOver' | 'victory' | 'upgrade' | 'paused';
+export type GameStatus = 'title' | 'intro' | 'playing' | 'gameOver' | 'victory' | 'upgrade' | 'paused' | 'controls';
 
 export interface UIState {
     health: number;

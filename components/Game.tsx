@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { GameState, GameStatus, UIState, PlayerUpgrades, GameHandle } from '../types';
 import * as C from '../constants';
-import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, IntroScreen, PauseScreen } from './UI';
+import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, IntroScreen, PauseScreen, ControlsScreen } from './UI';
 import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles, updatePlatforms, updateScreenShake } from '../services/gameLogic';
 import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde, drawHazards } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
@@ -265,7 +265,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             className="relative overflow-hidden border-4 border-slate-800 shadow-2xl" 
             style={{ width: C.CANVAS_WIDTH, height: C.CANVAS_HEIGHT }}
         >
-            {gameStatus !== 'title' && gameStatus !== 'intro' && (
+            {gameStatus !== 'title' && gameStatus !== 'intro' && gameStatus !== 'controls' && (
                 <canvas 
                     ref={canvasRef} 
                     width={C.CANVAS_WIDTH} 
@@ -273,7 +273,8 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
                     className="absolute top-0 left-0 bg-black"
                 />
             )}
-            {gameStatus === 'title' && <TitleScreen onStart={startGame} />}
+            {gameStatus === 'title' && <TitleScreen onStart={startGame} onShowControls={() => setGameStatus('controls')} />}
+            {gameStatus === 'controls' && <ControlsScreen onBack={() => setGameStatus('title')} />}
             {gameStatus === 'intro' && <IntroScreen onComplete={handleIntroComplete} />}
             {(gameStatus === 'playing' || gameStatus === 'paused') && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
             {gameStatus === 'paused' && <PauseScreen />}
