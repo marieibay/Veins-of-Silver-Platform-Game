@@ -1,3 +1,11 @@
+
+
+
+
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import { UIState, PlayerUpgrades } from '../types';
 import * as C from '../constants';
@@ -5,10 +13,9 @@ import { LEVELS } from '../data/levels';
 
 interface TitleScreenProps {
     onStart: () => void;
-    assetsLoaded: boolean;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, assetsLoaded }) => (
+export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => (
     <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-30 p-8 text-center">
         <h1 className="text-5xl text-red-400 text-glow mb-2" style={{ fontFamily: "'Press Start 2P', cursive" }}>VEINS OF SILVER</h1>
         <h2 className="text-xl text-slate-300 mb-8" style={{ fontFamily: "'Press Start 2P', cursive" }}>SHADOWS UNBOUND</h2>
@@ -19,10 +26,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, assetsLoaded 
 
         <button 
             onClick={onStart}
-            disabled={!assetsLoaded}
-            className="start-game-button disabled:opacity-50 disabled:cursor-not-allowed"
+            className="start-game-button"
         >
-            {assetsLoaded ? 'Start Game' : 'Loading Assets...'}
+            Start Game
         </button>
     </div>
 );

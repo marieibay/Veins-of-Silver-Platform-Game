@@ -5,7 +5,6 @@ import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, I
 import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles, updatePlatforms } from '../services/gameLogic';
 import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
-import { assetManager } from '../services/assetManager';
 import { LEVELS } from '../data/levels';
 
 const Game = forwardRef<GameHandle, {}>((props, ref) => {
@@ -15,7 +14,6 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
     const animationFrameId = useRef<number>(0);
 
     const [gameStatus, setGameStatus] = useState<GameStatus>('title');
-    const [assetsLoaded, setAssetsLoaded] = useState(false);
     const [currentLevel, setCurrentLevel] = useState(0);
     const [uiState, setUiState] = useState<UIState>({
         health: C.PLAYER_MAX_HEALTH,
@@ -31,15 +29,6 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
         upgrades: { maxHealth: 0, maxMana: 0, daggerDamage: 0, clawDamage: 0 },
         lives: C.PLAYER_STARTING_LIVES,
     });
-    
-    useEffect(() => {
-        assetManager.onAllAssetsLoaded().then(() => {
-            console.log("All assets loaded successfully.");
-            setAssetsLoaded(true);
-        }).catch(err => {
-            console.error("Failed to load assets:", err);
-        });
-    }, []);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -136,7 +125,6 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
     }, [gameStatus, updateUI, currentLevel]);
     
     const startGame = () => {
-        if (!assetsLoaded) return;
         audioManager.initializeAudioContext(); // Initialize on user gesture
         audioManager.playTitleMusic();
         setCurrentLevel(0);
@@ -274,7 +262,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
                     className="absolute top-0 left-0 bg-black"
                 />
             )}
-            {gameStatus === 'title' && <TitleScreen onStart={startGame} assetsLoaded={assetsLoaded} />}
+            {gameStatus === 'title' && <TitleScreen onStart={startGame} />}
             {gameStatus === 'intro' && <IntroScreen onComplete={handleIntroComplete} />}
             {(gameStatus === 'playing' || gameStatus === 'paused') && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
             {gameStatus === 'paused' && <PauseScreen />}
