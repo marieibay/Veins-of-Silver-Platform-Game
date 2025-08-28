@@ -36,7 +36,7 @@ export const LEVELS: LevelData[] = [
             {id: 4, x: 1250, y: 390, width: 24, height: 24, type: 'lunarFragment'}
         ]
     },
-    // LEVEL 2: The Underbelly (Expanded)
+    // LEVEL 2: The Underbelly (Expanded) - With Moving Platforms
     {
         worldWidth: 3500,
         worldHeight: 800,
@@ -47,26 +47,26 @@ export const LEVELS: LevelData[] = [
             {x: 300, y: 300, width: 150, height: 30},
             {x: 500, y: 400, width: 150, height: 30},
             {x: 700, y: 500, width: 300, height: 50},
-            {x: 1100, y: 450, width: 100, height: 30},
-            {x: 1300, y: 400, width: 100, height: 30},
-            {x: 1500, y: 350, width: 100, height: 30},
-            {x: 1700, y: 450, width: 200, height: 30},
-            {x: 1950, y: 550, width: 200, height: 30},
-            {x: 2200, y: 650, width: 150, height: 30},
-            {x: 2500, y: 750, width: 400, height: 50},
-            {x: 3000, y: 650, width: 150, height: 30},
+            {x: 1100, y: 450, width: 100, height: 30, type: 'horizontal', moveSpeed: 1, moveRange: 150},
+            {x: 1400, y: 400, width: 100, height: 30},
+            {x: 1600, y: 350, width: 100, height: 30},
+            {x: 1800, y: 450, width: 200, height: 30, type: 'horizontal', moveSpeed: 1.5, moveRange: 200},
+            {x: 2250, y: 550, width: 200, height: 30},
+            {x: 2500, y: 650, width: 150, height: 30},
+            {x: 2800, y: 750, width: 400, height: 50},
+            {x: 3300, y: 650, width: 150, height: 30},
             {x: 3350, y: 750, width: 200, height: 50},
         ],
         enemies: [
             {id: 6, x: 750, y: 452, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 710, patrolRange: 250},
-            {id: 7, x: 1750, y: 402, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: -1, type: 'enforcer', hitTimer: 0, startX: 1710, patrolRange: 150},
+            {id: 7, x: 1850, y: 402, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: -1, type: 'enforcer', hitTimer: 0, startX: 1810, patrolRange: 150},
             {id: 8, x: 550, y: 250, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.5, direction: 1, type: 'seeker', hitTimer: 0, startX: 400, patrolRange: 400},
             {id: 9, x: 2000, y: 400, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1, direction: -1, type: 'seeker', hitTimer: 0, startX: 1900, patrolRange: 300},
-            {id: 102, x: 2600, y: 702, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2510, patrolRange: 350},
+            {id: 102, x: 2900, y: 702, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2810, patrolRange: 350},
         ],
         powerUps: [
-            {id: 1, x: 1525, y: 320, width: 24, height: 24, type: 'lunarFragment'},
-            {id: 7, x: 1800, y: 420, width: 24, height: 24, type: 'healthVial'}
+            {id: 1, x: 1625, y: 320, width: 24, height: 24, type: 'lunarFragment'},
+            {id: 7, x: 1900, y: 420, width: 24, height: 24, type: 'healthVial'}
         ]
     },
     // LEVEL 3: The Ruined Spire (Expanded)
@@ -201,7 +201,7 @@ export const LEVELS: LevelData[] = [
             {id: 31, x: 1650, y: 320, width: 24, height: 24, type: 'healthVial'},
         ]
     },
-    // LEVEL 7: The Gilded Prison (New)
+    // LEVEL 7: The Gilded Prison (New) - With Moving Platforms
     {
         worldWidth: 4500,
         worldHeight: 1000,
@@ -216,9 +216,11 @@ export const LEVELS: LevelData[] = [
             {x: 1000, y: 350, width: 1000, height: 50},
             {x: 2500, y: 350, width: 1900, height: 50},
             // Connecting platforms
-            {x: 1400, y: 850, width: 100, height: 30}, {x: 1200, y: 750, width: 100, height: 30},
-            {x: 2400, y: 550, width: 100, height: 30}, {x: 2600, y: 450, width: 100, height: 30},
-            {x: 2200, y: 250, width: 100, height: 30}, {x: 2000, y: 200, width: 100, height: 30},
+            {x: 1400, y: 850, width: 100, height: 30},
+            {x: 1200, y: 750, width: 100, height: 30},
+            {x: 2400, y: 550, width: 100, height: 30, type: 'horizontal', moveSpeed: 2, moveRange: 300},
+            {x: 2200, y: 250, width: 100, height: 30},
+            {x: 2000, y: 200, width: 100, height: 30},
         ],
         enemies: [
             {id: 401, x: 700, y: 902, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 950},

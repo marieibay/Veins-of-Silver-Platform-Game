@@ -2,6 +2,10 @@
 
 
 
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import { UIState, PlayerUpgrades } from '../types';
 import * as C from '../constants';
@@ -188,10 +192,11 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ health, maxHealth, mana, m
                     {isMuted ? 'UNMUTE [M]' : 'MUTE [M]'}
                 </button>
                 <div>WASD/ARROWS: Move</div>
-                <div>SPACE: Jump</div>
+                <div>SPACE: Jump / Double Jump</div>
                 <div>J: Attack</div>
                 <div>K: Throw Dagger</div>
                 <div>L (Hold): Charged Blast</div>
+                <div>H: Dash</div>
                 <div>P: Pause</div>
             </div>
         </div>

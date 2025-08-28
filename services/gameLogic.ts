@@ -1,7 +1,4 @@
 
-
-
-
 import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
@@ -17,6 +14,26 @@ export const checkCollision = (
         a.y < b.y + b.height &&
         a.y + a.height > b.y
     );
+};
+
+export const updatePlatforms = (state: GameState) => {
+    state.platforms.forEach(p => {
+        if (p.type === 'horizontal' && p.moveSpeed && p.moveRange && p.startX !== undefined) {
+            p.x += p.moveSpeed * (p.direction ?? 1);
+            if (p.x > p.startX + p.moveRange || p.x < p.startX) {
+                p.direction = (p.direction ?? 1) * -1 as 1 | -1;
+                 // Clamp position to avoid overshooting
+                p.x = Math.max(p.startX, Math.min(p.x, p.startX + p.moveRange));
+            }
+        }
+        if (p.type === 'vertical' && p.moveSpeed && p.moveRange && p.startY !== undefined) {
+            p.y += p.moveSpeed * (p.direction ?? 1);
+            if (p.y > p.startY + p.moveRange || p.y < p.startY) {
+                p.direction = (p.direction ?? 1) * -1 as 1 | -1;
+                p.y = Math.max(p.startY, Math.min(p.y, p.startY + p.moveRange));
+            }
+        }
+    });
 };
 
 const getDamage = (base: number, upgradeLevel: number, upgradeValues: number[]) => {
@@ -101,8 +118,42 @@ export const updateParticles = (state: GameState) => {
     }
 };
 
+const applyGravityAndPlatformCollision = (entity: Enemy | PlayerState, platforms: GameState['platforms']) => {
+    entity.y += entity.velocityY!;
+    entity.onGround = false;
+
+    platforms.forEach(platform => {
+        const isFalling = entity.velocityY! >= 0;
+        const entityBottom = entity.y + entity.height;
+        const platformTop = platform.y;
+        
+        // Check if entity was above the platform in the last frame and is now intersecting
+        if (isFalling && entityBottom >= platformTop && entityBottom <= platformTop + 20 &&
+            entity.x + entity.width > platform.x && entity.x < platform.x + platform.width) {
+            
+            entity.y = platform.y - entity.height;
+            entity.velocityY = 0;
+            entity.onGround = true;
+
+            // Stick to moving platforms
+            if (platform.type === 'horizontal' && platform.moveSpeed) {
+                entity.x += platform.moveSpeed * (platform.direction ?? 1);
+            }
+             if (platform.type === 'vertical' && platform.moveSpeed) {
+                entity.y += platform.moveSpeed * (platform.direction ?? 1);
+            }
+        }
+    });
+
+    if (!entity.onGround) {
+        entity.velocityY! += C.GRAVITY;
+    }
+
+    return entity.onGround;
+};
+
 export const updateEnemies = (state: GameState) => {
-    const { enemies, player } = state;
+    const { enemies, player, platforms } = state;
 
     if (state.isoldeAttackTimer > 0) {
         state.isoldeAttackTimer--;
@@ -118,55 +169,162 @@ export const updateEnemies = (state: GameState) => {
 
 
     enemies.forEach(enemy => {
-        if(enemy.type === 'enforcer') {
-            enemy.x += enemy.speed * enemy.direction;
-            if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
-                enemy.direction *= -1;
+        const distanceX = player.x - enemy.x;
+        const distanceY = player.y - enemy.y;
+        const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+        
+        // Initialize optional properties
+        if (enemy.velocityY === undefined) enemy.velocityY = 0;
+        if (enemy.onGround === undefined) enemy.onGround = false;
+
+        // --- AI LOGIC ---
+        if (enemy.type === 'enforcer') {
+            if (!enemy.isAggro && distance < C.ENFORCER_AGGRO_RANGE) {
+                enemy.isAggro = true;
+                enemy.attackCooldown = 60; // Initial delay
+            }
+            if (enemy.isAggro) {
+                // Move towards player when not actively dashing/telling
+                 if (!enemy.attackPattern || enemy.attackPattern === 'idle') {
+                    if (enemy.attackCooldown! > 0) {
+                        enemy.attackCooldown!--;
+                         if (Math.abs(distanceX) > 50) { // Keep moving if not in melee range
+                            enemy.direction = Math.sign(distanceX) as 1 | -1;
+                            enemy.x += enemy.speed * enemy.direction;
+                        }
+                    } else {
+                        enemy.attackPattern = 'tell';
+                        enemy.direction = Math.sign(distanceX) as 1 | -1;
+                        enemy.attackPhaseTimer = C.ENFORCER_TELL_DURATION;
+                        enemy.attackCooldown = C.ENFORCER_DASH_COOLDOWN;
+                    }
+                } else if (enemy.attackPattern === 'dash') {
+                    enemy.x += C.ENFORCER_DASH_SPEED * enemy.direction;
+                    enemy.dashTimer!--;
+                    if (enemy.dashTimer! <= 0) enemy.attackPattern = 'idle';
+                } else if (enemy.attackPattern === 'tell') {
+                    enemy.attackPhaseTimer!--;
+                    if (enemy.attackPhaseTimer! <= 0) {
+                        enemy.attackPattern = 'dash';
+                        enemy.dashTimer = C.ENFORCER_DASH_DURATION;
+                    }
+                }
+                if (distance > C.ENFORCER_AGGRO_RANGE * 1.5) enemy.isAggro = false;
+            } else {
+                // Default patrol behavior
+                enemy.x += enemy.speed * enemy.direction;
+                if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
+                    enemy.direction *= -1;
+                }
             }
         }
         
         if(enemy.type === 'seeker') {
+             // Vertical float
              enemy.y += Math.sin(Date.now() / 300 + enemy.id) * 0.5;
-             enemy.x += enemy.speed * enemy.direction;
-             if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
-                enemy.direction *= -1;
-            }
 
-            // New attack logic for seekers
+             // Horizontal repositioning and patrol
+             if (distance < C.SEEKER_REPOSITION_DISTANCE) {
+                 enemy.direction = -Math.sign(distanceX) as 1 | -1;
+                 enemy.x += enemy.speed * enemy.direction; // Move away
+             } else {
+                 enemy.x += enemy.speed * enemy.direction;
+                 if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
+                    enemy.direction *= -1;
+                }
+             }
+
+            // Attack logic
             if (enemy.attackCooldown === undefined) enemy.attackCooldown = C.SEEKER_ATTACK_COOLDOWN;
             if (enemy.attackCooldown > 0) enemy.attackCooldown--;
 
-            const distanceX = player.x - enemy.x;
-            const distanceY = player.y - enemy.y;
-            const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-
             if (distance < C.SEEKER_ATTACK_RANGE && enemy.attackCooldown === 0) {
                 enemy.attackCooldown = C.SEEKER_ATTACK_COOLDOWN;
-                
                 const angle = Math.atan2(distanceY, distanceX);
-                const projectile: Projectile = {
-                    id: Math.random(),
-                    x: enemy.x + enemy.width / 2,
-                    y: enemy.y + enemy.height / 2,
-                    width: 12,
-                    height: 12,
-                    velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED,
-                    velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED,
-                    type: 'darkEnergy',
-                    owner: 'enemy',
-                    damage: C.SEEKER_PROJECTILE_DAMAGE,
-                };
-                state.projectiles.push(projectile);
+                state.projectiles.push({
+                    id: Math.random(), x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2, width: 12, height: 12,
+                    velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED, velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED,
+                    type: 'darkEnergy', owner: 'enemy', damage: C.SEEKER_PROJECTILE_DAMAGE,
+                });
                 audioManager.playSFX('enemyShoot');
             }
         }
         
         if(enemy.type === 'boss') {
-            const distance = player.x - enemy.x;
-            if (Math.abs(distance) < 600) { // Increased aggro range
-                enemy.direction = Math.sign(distance) as 1 | -1;
+            if (enemy.attackCooldown === undefined) enemy.attackCooldown = 120; // Initial delay
+            if (enemy.attackPhaseTimer === undefined) enemy.attackPhaseTimer = 0;
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+
+            // Handle landing from slam attack
+            const wasAirborne = !enemy.onGround;
+            applyGravityAndPlatformCollision(enemy, platforms);
+            if (wasAirborne && enemy.onGround && enemy.attackPattern === 'slam') {
+                state.particles.push({
+                    id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height, velocityX: 0, velocityY: 0,
+                    life: 30, maxLife: 30, color: 'white', size: C.BOSS_SLAM_RADIUS * 2, type: 'shockwave'
+                });
+                if (player.onGround && Math.abs(player.x - enemy.x) < C.BOSS_SLAM_RADIUS) {
+                    player.health -= C.BOSS_SLAM_DAMAGE;
+                    player.invincibilityTimer = 60;
+                }
+            }
+
+
+            if (enemy.attackCooldown <= 0) {
+                enemy.attackCooldown = C.BOSS_ATTACK_CYCLE;
+                const choice = Math.floor(Math.random() * 3);
+                if (choice === 0) {
+                    enemy.attackPattern = 'dash';
+                    enemy.attackPhaseTimer = C.BOSS_DASH_TELL;
+                } else if (choice === 1) {
+                    enemy.attackPattern = 'shoot';
+                    enemy.attackPhaseTimer = C.BOSS_SHOOT_TELL;
+                } else {
+                    enemy.attackPattern = 'slam';
+                    enemy.attackPhaseTimer = C.BOSS_SLAM_TELL;
+                }
+            }
+
+            if (enemy.attackPhaseTimer > 0) { // In "tell" phase
+                enemy.attackPhaseTimer--;
+                if (enemy.attackPhaseTimer <= 0) {
+                    // Execute attack
+                    if (enemy.attackPattern === 'dash') {
+                        enemy.dashTimer = C.BOSS_DASH_DURATION;
+                        enemy.direction = Math.sign(distanceX) as 1 | -1;
+                    }
+                    if (enemy.attackPattern === 'shoot') {
+                        const baseAngle = Math.atan2(distanceY, distanceX);
+                        for (let i = 0; i < C.BOSS_PROJECTILE_COUNT; i++) {
+                            const angle = baseAngle + (i - 1) * C.BOSS_PROJECTILE_SPREAD;
+                            state.projectiles.push({
+                                id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height/2, width: 16, height: 16,
+                                velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED * 1.5, velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED * 1.5,
+                                type: 'darkEnergy', owner: 'enemy', damage: C.SEEKER_PROJECTILE_DAMAGE * 1.5,
+                            });
+                        }
+                    }
+                    if (enemy.attackPattern === 'slam' && enemy.onGround) {
+                        enemy.velocityY = -C.BOSS_SLAM_JUMP_POWER;
+                        enemy.onGround = false;
+                    }
+                }
+            }
+
+            if (enemy.dashTimer && enemy.dashTimer > 0) { // Is dashing
+                enemy.dashTimer--;
+                enemy.x += C.BOSS_DASH_SPEED * enemy.direction;
+                if (enemy.dashTimer <= 0) enemy.attackPattern = 'idle';
+            } else if (!enemy.attackPattern || enemy.attackPattern === 'idle') {
+                // Default movement when not attacking
+                enemy.direction = Math.sign(distanceX) as 1 | -1;
                 enemy.x += enemy.speed * enemy.direction;
             }
+        }
+        
+        // Universal ground physics for non-seekers
+        if (enemy.type !== 'seeker') {
+            applyGravityAndPlatformCollision(enemy, platforms);
         }
 
         if (enemy.hitTimer > 0) enemy.hitTimer--;
@@ -195,6 +353,7 @@ export const updateEnemies = (state: GameState) => {
 export const updatePlayer = (state: GameState, keys: Record<string, boolean>): void => {
     const { player, platforms, enemies, particles, powerUps } = state;
     
+    // Decrement timers
     if (player.attackCooldown > 0) player.attackCooldown--;
     if (player.specialAttackCooldown > 0) player.specialAttackCooldown--;
     if (player.invincibilityTimer > 0) player.invincibilityTimer--;
@@ -202,9 +361,23 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         player.werewolfTimer--;
         if (player.werewolfTimer === 0) player.isWerewolf = false;
     }
+    if (player.dashCooldown > 0) player.dashCooldown--;
 
-    // Handle Charge Attack
-    if (keys['l'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN) {
+    // START DASH
+    if (keys['h'] && !player.isDashing && player.dashCooldown === 0 && player.mana >= C.DASH_MANA_COST && !player.attacking && player.chargeTimer === 0) {
+        player.isDashing = true;
+        player.dashTimer = C.DASH_DURATION;
+        player.dashCooldown = C.DASH_COOLDOWN;
+        player.mana -= C.DASH_MANA_COST;
+        player.invincibilityTimer = C.DASH_INVINCIBILITY_DURATION;
+        player.velocityX = C.DASH_SPEED * player.facing;
+        player.velocityY = 0; // Dash is purely horizontal
+        audioManager.playSFX('playerDash');
+        player.dashTrail = [];
+    }
+
+    // Handle Charge Attack (prevent if dashing)
+    if (keys['l'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN && !player.isDashing) {
         if (player.chargeTimer === 0) {
             audioManager.playSFX('chargeStart');
         }
@@ -277,7 +450,8 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     });
     
-    if (keys['j'] && !player.attacking && player.attackCooldown === 0 && player.chargeTimer === 0) {
+    // Handle Attacks (prevent if dashing)
+    if (keys['j'] && !player.attacking && player.attackCooldown === 0 && player.chargeTimer === 0 && !player.isDashing) {
         player.attacking = true;
         player.animation.frameTimer = 0;
         
@@ -317,7 +491,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         }
     }
 
-    if (keys['k'] && player.specialAttackCooldown === 0 && player.mana >= C.DAGGER_THROW_COST && player.chargeTimer === 0) {
+    if (keys['k'] && player.specialAttackCooldown === 0 && player.mana >= C.DAGGER_THROW_COST && player.chargeTimer === 0 && !player.isDashing) {
         player.mana -= C.DAGGER_THROW_COST;
         player.specialAttackCooldown = C.DAGGER_THROW_COOLDOWN;
         audioManager.playSFX('daggerThrow');
@@ -338,27 +512,71 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         particles.push(...createHitParticles(player.x + player.width/2, player.y + player.height/2, 5, '#e0e0e0'));
     }
 
-    if (player.chargeTimer > 0) {
-        player.velocityX *= C.FRICTION;
-    } else if (!player.attacking || player.isWerewolf) {
-        if (keys['a'] || keys['arrowleft']) { player.velocityX = -player.speed; player.facing = -1; } 
-        else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
-        else { if(!player.attacking) player.velocityX *= C.FRICTION; }
-        if ((keys[' '] || keys['w'] || keys['arrowup']) && player.onGround) { player.velocityY = -player.jumpPower; player.onGround = false; audioManager.playSFX('jump'); }
-    }
-    
-    player.velocityY += C.GRAVITY;
-    player.x += player.velocityX;
-    player.y += player.velocityY;
+    // MOVEMENT & PHYSICS
+    if (player.isDashing) {
+        player.dashTimer--;
+        
+        player.dashTrail.unshift({ x: player.x, y: player.y, facing: player.facing });
+        if (player.dashTrail.length > 5) player.dashTrail.pop();
 
-    player.onGround = false;
-    platforms.forEach(platform => {
-        if (checkCollision(player, platform) && player.y + player.height < platform.y + 20 && player.velocityY >= 0) {
-             player.y = platform.y - player.height;
-             player.velocityY = 0;
-             player.onGround = true;
+        if (player.dashTimer <= 0) {
+            player.isDashing = false;
+            player.velocityX *= 0.5; // Keep some momentum
         }
-    });
+        player.x += player.velocityX;
+        // No gravity during dash
+    } else {
+        if (player.dashTrail.length > 0) player.dashTrail = [];
+        
+        if (player.chargeTimer > 0) {
+            player.velocityX *= C.FRICTION;
+        } else if (!player.attacking || player.isWerewolf) {
+            if (keys['a'] || keys['arrowleft']) { player.velocityX = -player.speed; player.facing = -1; } 
+            else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
+            else { if(!player.attacking) player.velocityX *= C.FRICTION; }
+        }
+        
+        // JUMP LOGIC
+        const jumpPressed = keys[' '] || keys['w'] || keys['arrowup'];
+        if (jumpPressed) {
+            if (!player.jumpKeyHeld) { // It's a new press
+                if (player.onGround) {
+                    player.velocityY = -player.jumpPower;
+                    player.onGround = false;
+                    audioManager.playSFX('jump');
+                } else if (player.canDoubleJump) {
+                    player.velocityY = -C.PLAYER_DOUBLE_JUMP_POWER;
+                    player.canDoubleJump = false;
+                    audioManager.playSFX('doubleJump');
+                    const particles: Particle[] = [];
+                    for (let i = 0; i < 15; i++) {
+                        particles.push({
+                            id: Math.random(),
+                            x: player.x + player.width / 2,
+                            y: player.y + player.height,
+                            velocityX: (Math.random() - 0.5) * 4,
+                            velocityY: Math.random() * 3 + 1, // Downwards
+                            life: 25,
+                            maxLife: 25,
+                            color: '#f0f0f0',
+                            size: Math.random() * 2 + 1,
+                        });
+                    }
+                    state.particles.push(...particles);
+                }
+            }
+            player.jumpKeyHeld = true;
+        } else {
+            player.jumpKeyHeld = false;
+        }
+        
+        player.x += player.velocityX;
+
+        applyGravityAndPlatformCollision(player, platforms);
+        if(player.onGround) {
+            player.canDoubleJump = true;
+        }
+    }
     
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > state.worldWidth) player.x = state.worldWidth - player.width;
@@ -368,7 +586,10 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         player.attacking = false;
     }
 
-    if (!player.attacking) {
+    if (player.isDashing) {
+        player.animation.currentState = 'dash';
+        player.animation.frameTimer = 0;
+    } else if (!player.attacking) {
         let newAnimationState: PlayerState['animation']['currentState'] = 'idle';
         if (!player.onGround) newAnimationState = 'jump';
         else if (Math.abs(player.velocityX) > 0.1) newAnimationState = 'run';
@@ -382,6 +603,14 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
 
 export const createGameStateForLevel = (levelIndex: number, previousPlayerState?: PlayerState): GameState => {
     const levelData = LEVELS[levelIndex];
+    const platforms = JSON.parse(JSON.stringify(levelData.platforms));
+    platforms.forEach((p: any) => {
+        if (p.type && p.type !== 'static') {
+            p.startX = p.x;
+            p.startY = p.y;
+            p.direction = 1;
+        }
+    });
 
     const upgrades = previousPlayerState ? previousPlayerState.upgrades : { maxHealth: 0, maxMana: 0, daggerDamage: 0, clawDamage: 0 };
     const maxHealth = upgrades.maxHealth > 0 ? C.UPGRADE_VALUES.maxHealth[upgrades.maxHealth - 1] : C.PLAYER_MAX_HEALTH;
@@ -414,11 +643,17 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         upgrades: upgrades,
         lives: previousPlayerState ? previousPlayerState.lives : C.PLAYER_STARTING_LIVES,
         chargeTimer: 0,
+        isDashing: false,
+        dashTimer: 0,
+        dashCooldown: 0,
+        dashTrail: [],
+        canDoubleJump: true,
+        jumpKeyHeld: false,
     };
 
     return {
         player: initialPlayer,
-        platforms: JSON.parse(JSON.stringify(levelData.platforms)),
+        platforms,
         enemies: JSON.parse(JSON.stringify(levelData.enemies)),
         projectiles: [],
         particles: [],

@@ -7,6 +7,7 @@ export const PLAYER_WIDTH = 32;
 export const PLAYER_HEIGHT = 48;
 export const PLAYER_SPEED = 5;
 export const PLAYER_JUMP_POWER = 15;
+export const PLAYER_DOUBLE_JUMP_POWER = 12;
 export const PLAYER_MAX_HEALTH = 100;
 export const PLAYER_MAX_MANA = 80;
 export const PLAYER_STARTING_LIVES = 3;
@@ -48,6 +49,12 @@ export const CHARGE_ATTACK_DAMAGE_MAX = 70;
 export const CHARGE_ATTACK_RADIUS_MIN = 50;
 export const CHARGE_ATTACK_RADIUS_MAX = 150;
 
+// PLAYER DASH
+export const DASH_DURATION = 10; // frames (1/6th of a second)
+export const DASH_SPEED = 18;
+export const DASH_COOLDOWN = 45; // 3/4 of a second
+export const DASH_MANA_COST = 8;
+export const DASH_INVINCIBILITY_DURATION = 12; // A bit longer than the dash itself
 
 // ENEMY ATTACKS
 export const SEEKER_ATTACK_RANGE = 400;
@@ -69,3 +76,24 @@ export const UPGRADE_VALUES = {
   daggerDamage: [20, 25],
   clawDamage: [40, 50],
 };
+
+// ENEMY AI ENHANCEMENTS
+export const ENFORCER_AGGRO_RANGE = 350;
+export const ENFORCER_DASH_SPEED = 8;
+export const ENFORCER_DASH_COOLDOWN = 180; // 3 seconds
+export const ENFORCER_TELL_DURATION = 40; // frames for tell animation
+export const ENFORCER_DASH_DURATION = 25; // frames for dash movement
+
+export const SEEKER_REPOSITION_DISTANCE = 200; // will try to stay this far away
+
+export const BOSS_ATTACK_CYCLE = 240; // Chooses a new attack every 4 seconds
+export const BOSS_DASH_TELL = 50;
+export const BOSS_DASH_SPEED = 10;
+export const BOSS_DASH_DURATION = 40;
+export const BOSS_SHOOT_TELL = 70;
+export const BOSS_PROJECTILE_COUNT = 3;
+export const BOSS_PROJECTILE_SPREAD = 0.4; // radians
+export const BOSS_SLAM_TELL = 60;
+export const BOSS_SLAM_JUMP_POWER = 18;
+export const BOSS_SLAM_RADIUS = 250;
+export const BOSS_SLAM_DAMAGE = 25;

@@ -1,7 +1,7 @@
 
 
 export interface PlayerAnimationState {
-  currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack';
+  currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack' | 'dash';
   frameIndex: number;
   frameTimer: number;
 }
@@ -40,6 +40,12 @@ export interface PlayerState {
   specialAttackCooldown: number;
   lives: number;
   chargeTimer: number;
+  isDashing: boolean;
+  dashTimer: number;
+  dashCooldown: number;
+  dashTrail: { x: number; y: number; facing: 1 | -1 }[];
+  canDoubleJump: boolean;
+  jumpKeyHeld: boolean;
 }
 
 export interface Platform {
@@ -47,6 +53,13 @@ export interface Platform {
   y: number;
   width: number;
   height: number;
+  // New properties for movement
+  type?: 'static' | 'horizontal' | 'vertical';
+  moveSpeed?: number;
+  moveRange?: number;
+  startX?: number; // original start position
+  startY?: number; // original start position
+  direction?: 1 | -1;
 }
 
 export type EnemyType = 'enforcer' | 'seeker' | 'boss';
@@ -64,9 +77,15 @@ export interface Enemy {
   type: EnemyType;
   hitTimer: number; // For hit flash effect
   startX: number; // For patrol range
-  // FIX: Add missing patrolRange property.
   patrolRange: number;
   attackCooldown?: number; // Time until next attack
+  // New properties for advanced AI
+  isAggro?: boolean;
+  dashTimer?: number;
+  attackPattern?: 'idle' | 'tell' | 'dash' | 'shoot' | 'slam';
+  attackPhaseTimer?: number;
+  velocityY?: number;
+  onGround?: boolean;
 }
 
 export interface Projectile {

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperat
 import { GameState, GameStatus, UIState, PlayerUpgrades, GameHandle } from '../types';
 import * as C from '../constants';
 import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, IntroScreen, PauseScreen } from './UI';
-import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles } from '../services/gameLogic';
+import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles, updatePlatforms } from '../services/gameLogic';
 import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
 import { LEVELS } from '../data/levels';
@@ -71,6 +71,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
 
         const state = gameStateRef.current;
         
+        updatePlatforms(state);
         updatePlayer(state, keysPressed.current);
         updateEnemies(state);
         updateProjectiles(state);
