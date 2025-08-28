@@ -1,3 +1,4 @@
+
 import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState } from '../types';
 import * as C from '../constants';
 
@@ -116,7 +117,7 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
 };
 
 export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) => {
-    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf, chargeTimer, isDashing, dashTrail } = player;
+    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf, chargeTimer, isDashing, dashTrail, velocityY } = player;
 
     ctx.save();
 
@@ -159,65 +160,183 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
         ctx.arc(0, height / 2, glowRadius, 0, Math.PI * 2);
         ctx.fill();
     }
-
-    const headSize = 12, neck = 2, torsoH = 18, legH = 18, armW = isWerewolf ? 8 : 6, legW = isWerewolf ? 10 : 8, feetH = 4;
+    
+    // --- Animation Definitions ---
+    
+    const headSize = 12, neckH = 2, torsoH = 18, armW = 6, legW = 8, feetH = 4;
     const hair = isWerewolf ? '#4a4a4a' : '#6d4c41', skin = isWerewolf ? '#a1887f' : '#f0d9b5', tunic = isWerewolf ? '#424242' : '#00695c', pants = isWerewolf ? '#333333' : '#4e342e', boots = isWerewolf ? '#212121' : '#3e2723', daggerBlade = '#e0e0e0', eyeColor = isWerewolf ? '#fdd835' : 'black';
-    const runCycle = animation.currentState === 'run' ? Math.sin(Date.now() / 100) * 5 : 0;
 
-    // Handle special full-body dash pose first
-    if (animation.currentState === 'dash') {
-        const lean = 10;
-        ctx.fillStyle = tunic; 
-        ctx.beginPath();
-        ctx.moveTo(-width/4, headSize + neck); ctx.lineTo(width/4, headSize + neck);
-        ctx.lineTo(width/4 - lean, headSize + neck + torsoH); ctx.lineTo(-width/4 - lean, headSize + neck + torsoH);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = pants; ctx.fillRect(-legW - lean, headSize + neck + torsoH, legW, legH);
-        ctx.fillStyle = boots; ctx.fillRect(-legW - lean, headSize + neck + torsoH + legH - feetH, legW, feetH);
-        ctx.fillStyle = hair; ctx.fillRect(-headSize/2, -2, headSize + 4, headSize + 4); 
-        ctx.fillStyle = skin; ctx.fillRect(-headSize/2, 0, headSize, headSize);
-        ctx.fillStyle = eyeColor; ctx.fillRect(headSize/2 - 3, 4, 2, 2);
-    } else {
-        // --- Draw Base Body (for all non-dash states) ---
-        // Legs
-        ctx.fillStyle = pants; ctx.fillRect(2 - runCycle, headSize + neck + torsoH, legW, legH);
-        ctx.fillStyle = boots; ctx.fillRect(2 - runCycle, headSize + neck + torsoH + legH - feetH, legW, feetH);
-        ctx.fillStyle = pants; ctx.fillRect(-legW + runCycle, headSize + neck + torsoH, legW, legH);
-        ctx.fillStyle = boots; ctx.fillRect(-legW + runCycle, headSize + neck + torsoH + legH - feetH, legW, feetH);
-        // Torso
-        ctx.fillStyle = tunic; ctx.fillRect(-width/4, headSize + neck, width/2, torsoH);
-        // Head
-        ctx.fillStyle = hair; ctx.fillRect(-headSize/2 - 2, -2, headSize + 4, headSize + 4); 
-        if (!isWerewolf) ctx.fillRect(headSize / 2, 5, 5, 15);
-        ctx.fillStyle = skin; ctx.fillRect(-headSize/2, 0, headSize, headSize);
-        ctx.fillStyle = eyeColor; ctx.fillRect(headSize/2 - 3, 4, 2, 2);
+    const werewolfClaws = (x_offset: number, y_offset: number) => {
+        if (!isWerewolf) return;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x_offset, y_offset, 4, 2);
+        ctx.fillRect(x_offset, y_offset + 4, 4, 2);
+        ctx.fillRect(x_offset, y_offset + 8, 4, 2);
+    };
 
-        // --- Draw Arms based on state ---
-        if (animation.currentState === 'attack') {
-            const attackProgress = player.animation.frameTimer / 15, attackReach = 25 * Math.sin(attackProgress * Math.PI); 
-            ctx.fillStyle = tunic; ctx.fillRect(0, headSize + neck + 4, 15, armW);
-            const daggerBaseX = 15; const daggerBaseY = headSize + neck + 3;
-            ctx.fillStyle = daggerBlade; ctx.beginPath(); ctx.moveTo(daggerBaseX, daggerBaseY);
-            ctx.lineTo(daggerBaseX + attackReach, daggerBaseY + (armW-2)/2); ctx.lineTo(daggerBaseX, daggerBaseY + armW-2);
-            ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = `rgba(236, 239, 241, ${0.8 * Math.sin(attackProgress * Math.PI)})`; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(daggerBaseX - 5, headSize + neck + 8, attackReach, -0.25 * Math.PI, 0.25 * Math.PI); ctx.stroke();
-        } else if (animation.currentState === 'clawAttack') {
-            const attackProgress = player.animation.frameTimer / 12, lunge = 15 * Math.sin(attackProgress * Math.PI), armLungeX = lunge - 10;
-            ctx.fillStyle = tunic; ctx.fillRect(armLungeX, headSize + neck + 4, 25, armW);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * Math.sin(attackProgress * Math.PI)})`; ctx.lineWidth = 3;
-            for (let i = 0; i < 3; i++) {
-                const yOffset = (i - 1) * 8, xOffset = Math.random() * 5;
-                ctx.beginPath(); ctx.moveTo(armLungeX + 25 + xOffset, headSize + neck + 8 + yOffset);
-                ctx.quadraticCurveTo(armLungeX + 45, headSize + neck + 12 + yOffset, armLungeX + 60, headSize + neck + 4 + yOffset);
-                ctx.stroke();
+    const drawHead = (bob = 0) => {
+        const headY = bob;
+        ctx.fillStyle = hair; ctx.fillRect(-headSize / 2 - 2, headY - 2, headSize + 4, headSize + 4);
+        if (!isWerewolf) ctx.fillRect(headSize / 2, headY + 5, 5, 15); // Ponytail
+        ctx.fillStyle = skin; ctx.fillRect(-headSize / 2, headY, headSize, headSize);
+        ctx.fillStyle = eyeColor; ctx.fillRect(headSize / 2 - 3, headY + 4, 2, 2);
+    };
+
+    const drawTorso = (bob = 0) => {
+        ctx.fillStyle = tunic;
+        ctx.fillRect(-width / 4, headSize + neckH + bob, width / 2, torsoH);
+    };
+    
+    const drawLegs = (x1: number, y1: number, x2: number, y2: number) => {
+        const legH = height - (headSize + neckH + torsoH);
+        ctx.fillStyle = pants; ctx.fillRect(x1 - legW/2, y1, legW, legH);
+        ctx.fillStyle = boots; ctx.fillRect(x1 - legW/2, y1 + legH - feetH, legW, feetH);
+        ctx.fillStyle = pants; ctx.fillRect(x2 - legW/2, y2, legW, legH);
+        ctx.fillStyle = boots; ctx.fillRect(x2 - legW/2, y2 + legH - feetH, legW, feetH);
+    };
+    
+    const drawArm = (x: number, y: number, length: number, angle: number) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle * Math.PI / 180);
+        ctx.fillStyle = tunic;
+        ctx.fillRect(0, -armW / 2, length, armW);
+        werewolfClaws(length -2, -armW);
+        ctx.restore();
+    };
+
+    const torsoTop = headSize + neckH;
+    const legTop = torsoTop + torsoH;
+
+    const frame = animation.frameIndex;
+    
+    switch (animation.currentState) {
+        case 'idle': {
+            const bob = Math.sin(frame / C.ANIMATION_FRAMES.idle * Math.PI * 2) * 1;
+            drawTorso(bob);
+            drawHead(bob);
+            drawLegs(-legW/2, legTop, legW/2, legTop);
+            drawArm(0, torsoTop + 4, 14, -10);
+            break;
+        }
+        case 'run': {
+            const bob = Math.abs(Math.sin(frame / C.ANIMATION_FRAMES.run * Math.PI)) * -2;
+            const step = frame / C.ANIMATION_FRAMES.run;
+            const armAngle = Math.sin(step * Math.PI * 2) * 40;
+            const legAngle = Math.sin(step * Math.PI * 2) * 4;
+            drawTorso(bob);
+            drawHead(bob);
+            drawLegs(-legW/2 + legAngle, legTop, legW/2 - legAngle, legTop);
+            drawArm(0, torsoTop + 4, 16, armAngle);
+            break;
+        }
+        case 'jump': {
+            drawTorso();
+            drawHead();
+            const legOffset = velocityY > 0 ? 4 : -2;
+            drawLegs(-legW/2, legTop + legOffset, legW/2, legTop);
+            drawArm(0, torsoTop + 6, 12, velocityY > 0 ? -30 : 30);
+            break;
+        }
+        case 'attack': {
+            // Braced stance for legs, slightly wider.
+            drawLegs(-legW/2 - 2, legTop, legW/2 + 2, legTop); 
+            
+            // Define animation parameters per frame
+            let armAngle = 0;
+            let armLength = 15;
+            let lunge = 0; // Forward body movement
+
+            if (frame === 0) { // Wind up: pull back
+                armAngle = 25;
+                armLength = 12;
+                lunge = -5;
+            } else if (frame === 1) { // Thrust: extend forward
+                armAngle = -5; // A slight downward angle
+                armLength = 18;
+                lunge = 8;
+            } else if (frame === 2) { // Hold: keep extended
+                armAngle = -5;
+                armLength = 18;
+                lunge = 8;
+            } else { // Recover: back to neutral
+                armAngle = 10;
+                armLength = 15;
             }
-            ctx.strokeStyle = 'rgba(192, 77, 246, 0.8)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(lunge, headSize + neck + 10, 35, -0.3 * Math.PI, 0.3 * Math.PI); ctx.stroke();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(lunge, headSize + neck + 10, 40, -0.25 * Math.PI, 0.25 * Math.PI); ctx.stroke();
-        } else {
-            // Default resting arm for idle, run, jump
-            ctx.fillStyle = tunic; ctx.fillRect(0, headSize + neck + 4, armW, 14);
-            if (isWerewolf) { ctx.fillStyle = '#ffffff'; ctx.fillRect(armW, headSize + neck + 4, 4, 2); ctx.fillRect(armW, headSize + neck + 8, 4, 2); }
+            
+            ctx.save();
+            ctx.translate(lunge, 0); // Apply the lunge
+
+            // Draw torso and head after lunge so they move with it
+            drawTorso();
+            drawHead();
+
+            // Draw the arm
+            drawArm(0, torsoTop + 4, armLength, armAngle);
+            
+            // Draw the dagger blade during the thrust/hold frames
+            if (frame === 1 || frame === 2) {
+                ctx.save();
+                
+                // Calculate the position of the end of the arm
+                const radAngle = armAngle * Math.PI / 180;
+                const armPivotX = 0;
+                const armPivotY = torsoTop + 4;
+                const armEndX = armPivotX + Math.cos(radAngle) * armLength;
+                const armEndY = armPivotY + Math.sin(radAngle) * armLength;
+                
+                // Move to the end of the arm to draw the dagger
+                ctx.translate(armEndX, armEndY);
+                ctx.rotate(radAngle);
+
+                // Draw the dagger blade itself
+                ctx.fillStyle = daggerBlade;
+                ctx.fillRect(0, -2, 20, 4); // A 20px long blade
+                
+                ctx.restore();
+            }
+
+            ctx.restore(); // Restore from the lunge translate
+
+            break;
+        }
+        case 'clawAttack': {
+            drawTorso();
+            drawHead();
+            let armAngle = 0;
+            let lunge = 0;
+            
+            if (frame === 0) { armAngle = -60; lunge = -5; } // Wind up
+            else if (frame === 1) { armAngle = 80; lunge = 15; } // Swipe
+            else if (frame === 2) { armAngle = 50; lunge = 10; } // Follow through
+            else { armAngle = -10; lunge = 0; } // Recover
+
+            drawLegs(-legW/2 - lunge/2, legTop, legW/2 + lunge/2, legTop);
+            ctx.translate(lunge, 0); // Lunge the whole body
+            drawArm(0, torsoTop + 4, 18, armAngle);
+
+            if (frame === 1) {
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.9)`; ctx.lineWidth = 3;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(18, torsoTop + 2 + i * 4);
+                    ctx.quadraticCurveTo(35, torsoTop + 10 + (i-1)*5, 50, torsoTop - 5 + i*8);
+                    ctx.stroke();
+                }
+            }
+            break;
+        }
+        case 'dash': {
+            const lean = 15;
+            ctx.save();
+            ctx.rotate(-lean * Math.PI / 180);
+            ctx.translate(0, 5);
+            drawHead();
+            drawTorso();
+            drawLegs(-legW/2, legTop, legW/2 + 5, legTop);
+            drawArm(0, torsoTop + 4, 16, 180); // Arm trailing behind
+            ctx.restore();
+            break;
         }
     }
     

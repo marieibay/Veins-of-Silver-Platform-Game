@@ -454,6 +454,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     if (keys['j'] && !player.attacking && player.attackCooldown === 0 && player.chargeTimer === 0 && !player.isDashing) {
         player.attacking = true;
         player.animation.frameTimer = 0;
+        player.animation.frameIndex = 0;
         
         const processAttack = (damage: number, hitbox: { x: number, y: number, width: number, height: number }) => {
              enemies.forEach(enemy => {
@@ -581,22 +582,44 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     if (player.x < 0) player.x = 0;
     if (player.x + player.width > state.worldWidth) player.x = state.worldWidth - player.width;
 
+    // Animation State Machine
     player.animation.frameTimer++;
-    if ((player.animation.currentState === 'attack' && player.animation.frameTimer > 15) || (player.animation.currentState === 'clawAttack' && player.animation.frameTimer > 12)) {
-        player.attacking = false;
+    const animSpeed = C.ANIMATION_SPEEDS[player.animation.currentState as keyof typeof C.ANIMATION_SPEEDS];
+    const animFrames = C.ANIMATION_FRAMES[player.animation.currentState as keyof typeof C.ANIMATION_FRAMES];
+
+    if (player.animation.frameTimer >= animSpeed) {
+        player.animation.frameTimer = 0;
+        player.animation.frameIndex++;
+
+        if (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack') {
+            if (player.animation.frameIndex >= animFrames) {
+                player.attacking = false;
+                player.animation.frameIndex = 0; 
+            }
+        } else {
+            player.animation.frameIndex %= animFrames;
+        }
     }
 
-    if (player.isDashing) {
-        player.animation.currentState = 'dash';
-        player.animation.frameTimer = 0;
-    } else if (!player.attacking) {
+    // Determine current state (if not in a fixed state like attack/dash)
+    if (!player.attacking && !player.isDashing) {
         let newAnimationState: PlayerState['animation']['currentState'] = 'idle';
-        if (!player.onGround) newAnimationState = 'jump';
-        else if (Math.abs(player.velocityX) > 0.1) newAnimationState = 'run';
+        if (!player.onGround) {
+            newAnimationState = 'jump';
+        } else if (Math.abs(player.velocityX) > 0.1 && player.chargeTimer === 0) {
+            newAnimationState = 'run';
+        }
 
         if (player.animation.currentState !== newAnimationState) {
             player.animation.currentState = newAnimationState;
             player.animation.frameTimer = 0;
+            player.animation.frameIndex = 0;
+        }
+    } else if (player.isDashing) { // Set dash state
+        if (player.animation.currentState !== 'dash') {
+            player.animation.currentState = 'dash';
+            player.animation.frameTimer = 0;
+            player.animation.frameIndex = 0;
         }
     }
 };

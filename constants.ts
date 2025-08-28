@@ -97,3 +97,22 @@ export const BOSS_SLAM_TELL = 60;
 export const BOSS_SLAM_JUMP_POWER = 18;
 export const BOSS_SLAM_RADIUS = 250;
 export const BOSS_SLAM_DAMAGE = 25;
+
+// PLAYER ANIMATIONS
+export const ANIMATION_FRAMES = {
+    idle: 4,
+    run: 6,
+    jump: 1, // Will be handled by velocity check in render
+    attack: 4,
+    clawAttack: 4,
+    dash: 1, // Dash is more of a pose
+};
+
+export const ANIMATION_SPEEDS = { // ticks per animation frame
+    idle: 12,
+    run: 5,
+    jump: 1,
+    attack: 4,
+    clawAttack: 3,
+    dash: 1,
+};
