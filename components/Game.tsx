@@ -2,8 +2,8 @@ import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperat
 import { GameState, GameStatus, UIState, PlayerUpgrades, GameHandle } from '../types';
 import * as C from '../constants';
 import { GameOverScreen, UIOverlay, VictoryScreen, TitleScreen, UpgradeScreen, IntroScreen, PauseScreen } from './UI';
-import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles, updatePlatforms } from '../services/gameLogic';
-import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde } from '../services/renderLogic';
+import { createGameStateForLevel, updatePlayer, updateEnemies, updateProjectiles, updateParticles, updatePlatforms, updateScreenShake } from '../services/gameLogic';
+import { drawBackground, drawEnemies, drawParticles, drawPlayer, drawPlatforms, drawProjectiles, drawGoal, drawPowerUps, drawIsolde, drawHazards } from '../services/renderLogic';
 import { audioManager } from '../services/audioManager';
 import { LEVELS } from '../data/levels';
 
@@ -71,6 +71,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
 
         const state = gameStateRef.current;
         
+        updateScreenShake(state);
         updatePlatforms(state);
         updatePlayer(state, keysPressed.current);
         updateEnemies(state);
@@ -104,11 +105,20 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
         
         if (gameStatus === 'playing') {
             ctx.clearRect(0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT);
+
+            ctx.save();
+             if (state.screenShake.duration > 0) {
+                const shakeX = (Math.random() - 0.5) * state.screenShake.magnitude;
+                const shakeY = (Math.random() - 0.5) * state.screenShake.magnitude;
+                ctx.translate(shakeX, shakeY);
+            }
+
             drawBackground(ctx, state.camera);
             ctx.save();
             ctx.translate(-state.camera.x, -state.camera.y);
             
             drawGoal(ctx, state.goal);
+            drawHazards(ctx, state.hazards);
             drawPlatforms(ctx, state.platforms);
             drawPowerUps(ctx, state.powerUps);
             drawEnemies(ctx, state.enemies);
@@ -117,7 +127,8 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             drawParticles(ctx, state.particles);
             drawIsolde(ctx, state);
 
-            ctx.restore();
+            ctx.restore(); // for camera translate
+            ctx.restore(); // for screen shake
             
             updateUI();
             animationFrameId.current = requestAnimationFrame(gameLoop);

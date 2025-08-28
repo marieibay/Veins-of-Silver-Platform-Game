@@ -67,6 +67,10 @@ export const LEVELS: LevelData[] = [
         powerUps: [
             {id: 1, x: 1625, y: 320, width: 24, height: 24, type: 'lunarFragment'},
             {id: 7, x: 1900, y: 420, width: 24, height: 24, type: 'healthVial'}
+        ],
+        hazards: [
+            { x: 2800, y: 740, width: 400, height: 10, type: 'spikes' },
+            { x: 1400, y: 390, width: 100, height: 10, type: 'spikes' },
         ]
     },
     // LEVEL 3: The Ruined Spire (Expanded)
@@ -102,6 +106,11 @@ export const LEVELS: LevelData[] = [
              {id: 6, x: 2400, y: 320, width: 24, height: 24, type: 'isoldeAid'},
              {id: 8, x: 790, y: 420, width: 24, height: 24, type: 'healthVial'},
              {id: 10, x: 1000, y: 320, width: 24, height: 24, type: 'lunarFragment' },
+        ],
+        hazards: [
+            { x: 900, y: 740, width: 100, height: 10, type: 'spikes' },
+            { x: 1400, y: 340, width: 1100, height: 10, type: 'spikes' },
+            { x: 2800, y: 240, width: 150, height: 10, type: 'spikes' }
         ]
     },
     // LEVEL 4: Sanctuary Siege (Expanded)
@@ -119,6 +128,7 @@ export const LEVELS: LevelData[] = [
             {x: 2300, y: 450, width: 150, height: 30},
             {x: 2500, y: 500, width: 150, height: 30},
             {x: 2800, y: 550, width: 500, height: 50},
+            {x: 3300, y: 500, width: 80, height: 30, type: 'vertical', moveSpeed: 1, moveRange: 150},
             {x: 3400, y: 500, width: 400, height: 50},
             {x: 3900, y: 450, width: 150, height: 30},
             {x: 4100, y: 400, width: 150, height: 30},
@@ -138,6 +148,9 @@ export const LEVELS: LevelData[] = [
              {id: 2, x: 1050, y: 470, width: 24, height: 24, type: 'isoldeAid'},
              {id: 5, x: 2700, y: 470, width: 24, height: 24, type: 'lunarFragment'},
              {id: 9, x: 2200, y: 370, width: 24, height: 24, type: 'healthVial'}
+        ],
+        hazards: [
+             { x: 800, y: 540, width: 100, height: 10, type: 'spikes' }
         ]
     },
     // LEVEL 5: The Grand Library (New)
@@ -151,6 +164,7 @@ export const LEVELS: LevelData[] = [
             {x: 300, y: 700, width: 40, height: 150}, // Bookshelf
             {x: 400, y: 600, width: 150, height: 30},
             {x: 600, y: 750, width: 40, height: 100}, // Bookshelf
+            {x: 650, y: 800, width: 80, height: 30, type: 'vertical', moveSpeed: 1.5, moveRange: 220},
             {x: 700, y: 850, width: 600, height: 50},
             {x: 1000, y: 700, width: 150, height: 30},
             {x: 1200, y: 600, width: 150, height: 30},
@@ -159,6 +173,7 @@ export const LEVELS: LevelData[] = [
             {x: 1750, y: 300, width: 150, height: 30},
             {x: 2000, y: 250, width: 150, height: 30},
             {x: 2300, y: 200, width: 500, height: 50}, // Top floor
+            {x: 2750, y: 200, width: 200, height: 150},
         ],
         enemies: [
             {id: 201, x: 800, y: 802, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 710, patrolRange: 550},
@@ -169,6 +184,9 @@ export const LEVELS: LevelData[] = [
         powerUps: [
             {id: 20, x: 1250, y: 570, width: 24, height: 24, type: 'healthVial'},
             {id: 21, x: 1450, y: 470, width: 24, height: 24, type: 'lunarFragment'},
+        ],
+        hazards: [
+            { x: 1600, y: 490, width: 400, height: 10, type: 'spikes' }
         ]
     },
      // LEVEL 6: The Corrupted Aqueducts (New)
@@ -199,6 +217,9 @@ export const LEVELS: LevelData[] = [
         powerUps: [
             {id: 30, x: 2300, y: 270, width: 24, height: 24, type: 'isoldeAid'},
             {id: 31, x: 1650, y: 320, width: 24, height: 24, type: 'healthVial'},
+        ],
+        hazards: [
+            { x: 800, y: 690, width: 3000, height: 10, type: 'spikes' }
         ]
     },
     // LEVEL 7: The Gilded Prison (New) - With Moving Platforms
@@ -218,9 +239,11 @@ export const LEVELS: LevelData[] = [
             // Connecting platforms
             {x: 1400, y: 850, width: 100, height: 30},
             {x: 1200, y: 750, width: 100, height: 30},
+            {x: 1800, y: 600, width: 100, height: 30, type: 'vertical', moveSpeed: 2, moveRange: 220},
             {x: 2400, y: 550, width: 100, height: 30, type: 'horizontal', moveSpeed: 2, moveRange: 300},
             {x: 2200, y: 250, width: 100, height: 30},
             {x: 2000, y: 200, width: 100, height: 30},
+            {x: 4250, y: 350, width: 200, height: 150},
         ],
         enemies: [
             {id: 401, x: 700, y: 902, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 950},
@@ -233,6 +256,11 @@ export const LEVELS: LevelData[] = [
         powerUps: [
             {id: 40, x: 2000, y: 620, width: 24, height: 24, type: 'lunarFragment'},
             {id: 41, x: 1500, y: 620, width: 24, height: 24, type: 'healthVial'},
+        ],
+        hazards: [
+            { x: 100, y: 940, width: 300, height: 10, type: 'spikes' },
+            { x: 500, y: 640, width: 100, height: 10, type: 'spikes' },
+            { x: 2000, y: 340, width: 500, height: 10, type: 'spikes' },
         ]
     },
     // LEVEL 8: The Skybridge (New)
@@ -243,6 +271,7 @@ export const LEVELS: LevelData[] = [
         goal: { x: 4900, y: 450, width: 60, height: 100 },
         platforms: [
             {x: 0, y: 550, width: 200, height: 50},
+            {x: 220, y: 550, width: 100, height: 30, type: 'horizontal', moveSpeed: 1.5, moveRange: 80},
             {x: 400, y: 550, width: 500, height: 50},
             {x: 1100, y: 550, width: 400, height: 50},
             {x: 1700, y: 500, width: 100, height: 30},
@@ -264,6 +293,11 @@ export const LEVELS: LevelData[] = [
         powerUps: [
             {id: 50, x: 2800, y: 370, width: 24, height: 24, type: 'lunarFragment'},
             {id: 51, x: 1950, y: 420, width: 24, height: 24, type: 'healthVial'},
+        ],
+        hazards: [
+            { x: 200, y: 590, width: 200, height: 10, type: 'spikes' },
+            { x: 900, y: 590, width: 200, height: 10, type: 'spikes' },
+            { x: 1500, y: 590, width: 200, height: 10, type: 'spikes' },
         ]
     },
      // LEVEL 9: The Outer Citadel (New)

@@ -1,7 +1,7 @@
 
 
 export interface PlayerAnimationState {
-  currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack' | 'dash';
+  currentState: 'idle' | 'run' | 'jump' | 'attack' | 'clawAttack' | 'dash' | 'wallSlide' | 'parry';
   frameIndex: number;
   frameTimer: number;
 }
@@ -46,6 +46,10 @@ export interface PlayerState {
   dashTrail: { x: number; y: number; facing: 1 | -1 }[];
   canDoubleJump: boolean;
   jumpKeyHeld: boolean;
+  isWallSliding: boolean;
+  isParrying: boolean;
+  parryTimer: number;
+  parryCooldown: number;
 }
 
 export interface Platform {
@@ -77,7 +81,8 @@ export interface Enemy {
   type: EnemyType;
   hitTimer: number; // For hit flash effect
   startX: number; // For patrol range
-  patrolRange: number;
+  // FIX: Added optional patrolRange property to the Enemy interface. This property is used by some enemy types for patrol behavior and was missing from the type definition, causing multiple TypeScript errors.
+  patrolRange?: number;
   attackCooldown?: number; // Time until next attack
   // New properties for advanced AI
   isAggro?: boolean;
@@ -86,6 +91,7 @@ export interface Enemy {
   attackPhaseTimer?: number;
   velocityY?: number;
   onGround?: boolean;
+  staggerTimer?: number;
 }
 
 export interface Projectile {
@@ -141,6 +147,15 @@ export interface Goal {
     height: number;
 }
 
+export type HazardType = 'spikes';
+export interface Hazard {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    type: HazardType;
+}
+
 export interface LevelData {
   playerStart: { x: number; y: number };
   platforms: Platform[];
@@ -149,6 +164,7 @@ export interface LevelData {
   goal: Goal;
   worldWidth: number;
   worldHeight: number;
+  hazards?: Hazard[];
 }
 
 export interface GameState {
@@ -165,6 +181,8 @@ export interface GameState {
   goal: Goal;
   currentLevel: number;
   isoldeAttackTimer: number;
+  screenShake: { magnitude: number; duration: number; };
+  hazards: Hazard[];
 }
 
 export type GameStatus = 'title' | 'intro' | 'playing' | 'gameOver' | 'victory' | 'upgrade' | 'paused';

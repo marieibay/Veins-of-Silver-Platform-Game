@@ -1,5 +1,5 @@
 
-import { GameState, PlayerState, Projectile, Particle, Enemy } from '../types';
+import { GameState, PlayerState, Projectile, Particle, Enemy, Platform } from '../types';
 import * as C from '../constants';
 import { audioManager } from './audioManager';
 import { LEVELS } from '../data/levels';
@@ -97,12 +97,25 @@ export const updateProjectiles = (state: GameState) => {
                 }
             }
         } else if (projectile.owner === 'enemy') {
-            if (state.player.invincibilityTimer === 0 && checkCollision(projectile, state.player)) {
-                state.player.health -= projectile.damage;
-                state.player.invincibilityTimer = 60; // 1 second invincibility
-                audioManager.playSFX('playerHurt');
-                state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
-                state.projectiles.splice(i, 1);
+            if (checkCollision(projectile, state.player)) {
+                 if (state.player.isParrying) {
+                    // Successful projectile parry
+                    projectile.owner = 'player';
+                    projectile.velocityX *= -1.5; // Reflect and speed up
+                    projectile.velocityY *= -1.5;
+                    projectile.damage *= 2; // More damage
+                    audioManager.playSFX('parrySuccess');
+                    state.player.isParrying = false;
+                    state.player.parryTimer = 0;
+                    // Don't splice the projectile
+                } else if (state.player.invincibilityTimer === 0) {
+                    state.player.health -= projectile.damage;
+                    state.player.invincibilityTimer = 60; // 1 second invincibility
+                    audioManager.playSFX('playerHurt');
+                    state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
+                    state.projectiles.splice(i, 1);
+                    state.screenShake = { magnitude: 5, duration: 15 };
+                }
             }
         }
     }
@@ -176,6 +189,18 @@ export const updateEnemies = (state: GameState) => {
         // Initialize optional properties
         if (enemy.velocityY === undefined) enemy.velocityY = 0;
         if (enemy.onGround === undefined) enemy.onGround = false;
+        if (enemy.staggerTimer === undefined) enemy.staggerTimer = 0;
+        
+        // Stagger logic
+        if (enemy.staggerTimer > 0) {
+            enemy.staggerTimer--;
+             if (enemy.type !== 'seeker') {
+                applyGravityAndPlatformCollision(enemy, platforms);
+            }
+            if (enemy.hitTimer > 0) enemy.hitTimer--;
+            return; // Skip AI logic if staggered
+        }
+
 
         // --- AI LOGIC ---
         if (enemy.type === 'enforcer') {
@@ -213,7 +238,8 @@ export const updateEnemies = (state: GameState) => {
             } else {
                 // Default patrol behavior
                 enemy.x += enemy.speed * enemy.direction;
-                if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
+                // FIX: Added a check for enemy.patrolRange to prevent runtime errors. The property is optional on the Enemy type.
+                if (enemy.patrolRange !== undefined && (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange)) {
                     enemy.direction *= -1;
                 }
             }
@@ -229,7 +255,8 @@ export const updateEnemies = (state: GameState) => {
                  enemy.x += enemy.speed * enemy.direction; // Move away
              } else {
                  enemy.x += enemy.speed * enemy.direction;
-                 if (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange) {
+                // FIX: Added a check for enemy.patrolRange to prevent runtime errors. The property is optional on the Enemy type.
+                 if (enemy.patrolRange !== undefined && (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange)) {
                     enemy.direction *= -1;
                 }
              }
@@ -259,6 +286,7 @@ export const updateEnemies = (state: GameState) => {
             const wasAirborne = !enemy.onGround;
             applyGravityAndPlatformCollision(enemy, platforms);
             if (wasAirborne && enemy.onGround && enemy.attackPattern === 'slam') {
+                state.screenShake = { magnitude: 12, duration: 30 };
                 state.particles.push({
                     id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height, velocityX: 0, velocityY: 0,
                     life: 30, maxLife: 30, color: 'white', size: C.BOSS_SLAM_RADIUS * 2, type: 'shockwave'
@@ -266,6 +294,7 @@ export const updateEnemies = (state: GameState) => {
                 if (player.onGround && Math.abs(player.x - enemy.x) < C.BOSS_SLAM_RADIUS) {
                     player.health -= C.BOSS_SLAM_DAMAGE;
                     player.invincibilityTimer = 60;
+                    state.screenShake = { magnitude: 15, duration: 30 };
                 }
             }
 
@@ -329,12 +358,23 @@ export const updateEnemies = (state: GameState) => {
 
         if (enemy.hitTimer > 0) enemy.hitTimer--;
 
-        if (player.invincibilityTimer === 0 && checkCollision(player, enemy)) {
-            player.health -= enemy.type === 'boss' ? 25 : 10;
-            player.invincibilityTimer = 60;
-            audioManager.playSFX('playerHurt');
-            player.velocityY = -5;
-            player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
+        if (checkCollision(player, enemy)) {
+            if (player.isParrying) {
+                // Successful melee parry
+                enemy.staggerTimer = C.ENEMY_STAGGER_DURATION;
+                player.mana = Math.min(player.maxMana, player.mana + C.PARRY_MANA_REGAIN);
+                audioManager.playSFX('parrySuccess');
+                player.isParrying = false;
+                player.parryTimer = 0;
+                // Don't take damage or knockback
+            } else if (player.invincibilityTimer === 0) {
+                player.health -= enemy.type === 'boss' ? 25 : 10;
+                player.invincibilityTimer = 60;
+                audioManager.playSFX('playerHurt');
+                player.velocityY = -5;
+                player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
+                state.screenShake = { magnitude: 8, duration: 20 };
+            }
         }
     });
 
@@ -351,7 +391,7 @@ export const updateEnemies = (state: GameState) => {
 };
 
 export const updatePlayer = (state: GameState, keys: Record<string, boolean>): void => {
-    const { player, platforms, enemies, particles, powerUps } = state;
+    const { player, platforms, enemies, particles, powerUps, hazards } = state;
     
     // Decrement timers
     if (player.attackCooldown > 0) player.attackCooldown--;
@@ -362,6 +402,32 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         if (player.werewolfTimer === 0) player.isWerewolf = false;
     }
     if (player.dashCooldown > 0) player.dashCooldown--;
+    if (player.parryCooldown > 0) player.parryCooldown--;
+    if (player.parryTimer > 0) {
+        player.parryTimer--;
+        if (player.parryTimer === 0) {
+            player.isParrying = false;
+        }
+    }
+
+    // START PARRY
+    if (keys['l'] && !player.isParrying && player.parryCooldown === 0 && player.mana >= C.PARRY_MANA_COST && player.onGround && !player.attacking && !player.isDashing) {
+        player.isParrying = true;
+        player.parryTimer = C.PARRY_DURATION;
+        player.parryCooldown = C.PARRY_COOLDOWN;
+        player.mana -= C.PARRY_MANA_COST;
+        audioManager.playSFX('parryAttempt');
+        player.velocityX = 0; // Stop moving
+        player.animation.currentState = 'parry';
+        player.animation.frameIndex = 0;
+        player.animation.frameTimer = 0;
+    }
+
+    // Halt actions if parrying
+    if (player.isParrying) {
+        applyGravityAndPlatformCollision(player, platforms);
+        return; // Exit early to prevent other actions
+    }
 
     // START DASH
     if (keys['h'] && !player.isDashing && player.dashCooldown === 0 && player.mana >= C.DASH_MANA_COST && !player.attacking && player.chargeTimer === 0) {
@@ -377,7 +443,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // Handle Charge Attack (prevent if dashing)
-    if (keys['l'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN && !player.isDashing) {
+    if (keys['s'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN && !player.isDashing) {
         if (player.chargeTimer === 0) {
             audioManager.playSFX('chargeStart');
         }
@@ -393,6 +459,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 const radius = C.CHARGE_ATTACK_RADIUS_MIN + (C.CHARGE_ATTACK_RADIUS_MAX - C.CHARGE_ATTACK_RADIUS_MIN) * chargeRatio;
                 
                 audioManager.playSFX('chargeRelease');
+                state.screenShake = { magnitude: 8, duration: 20 };
 
                 const playerCenterX = player.x + player.width / 2;
                 const playerCenterY = player.y + player.height / 2;
@@ -426,6 +493,17 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         player.chargeTimer = 0; // Reset
     }
 
+    // HAZARD COLLISION
+    hazards.forEach(hazard => {
+        if (checkCollision(player, hazard) && player.invincibilityTimer === 0) {
+            player.health -= 15; // Spike damage
+            player.invincibilityTimer = 60;
+            player.velocityY = -8; // Knockback
+            player.onGround = false;
+            audioManager.playSFX('playerHurt');
+            state.screenShake = { magnitude: 5, duration: 15 };
+        }
+    });
 
     powerUps.forEach((powerUp, index) => {
         if (checkCollision(player, powerUp)) {
@@ -514,7 +592,14 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // MOVEMENT & PHYSICS
+    const isTryingToMoveHorizontally = (keys['a'] || keys['arrowleft']) || (keys['d'] || keys['arrowright']);
+
+    if (player.onGround) {
+        player.isWallSliding = false;
+    }
+    
     if (player.isDashing) {
+        player.isWallSliding = false; // Cannot wall slide while dashing
         player.dashTimer--;
         
         player.dashTrail.unshift({ x: player.x, y: player.y, facing: player.facing });
@@ -536,12 +621,43 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
             else { if(!player.attacking) player.velocityX *= C.FRICTION; }
         }
+
+        // WALL SLIDE LOGIC
+        if (!player.onGround && isTryingToMoveHorizontally && player.velocityY >= 0) {
+            let wallFound = false;
+            const checkX = player.facing === 1 ? player.x + player.width : player.x;
+            for (const p of platforms) {
+                const isNextToPlatform = player.facing === 1
+                    ? (checkX >= p.x && checkX < p.x + 5)
+                    : (checkX <= p.x + p.width && checkX > p.x + p.width - 5);
+                
+                if (isNextToPlatform && player.y + player.height > p.y && player.y < p.y + p.height) {
+                    wallFound = true;
+                    break;
+                }
+            }
+            if (wallFound) {
+                player.isWallSliding = true;
+                player.velocityY = C.WALL_SLIDE_SPEED;
+                player.canDoubleJump = true; // Reset double jump on wall contact
+            } else {
+                player.isWallSliding = false;
+            }
+        } else {
+            player.isWallSliding = false;
+        }
         
         // JUMP LOGIC
         const jumpPressed = keys[' '] || keys['w'] || keys['arrowup'];
         if (jumpPressed) {
             if (!player.jumpKeyHeld) { // It's a new press
-                if (player.onGround) {
+                if (player.isWallSliding) {
+                    player.velocityY = -C.WALL_JUMP_Y_POWER;
+                    player.velocityX = C.WALL_JUMP_X_POWER * -player.facing;
+                    player.facing *= -1;
+                    player.isWallSliding = false;
+                    audioManager.playSFX('jump');
+                } else if (player.onGround) {
                     player.velocityY = -player.jumpPower;
                     player.onGround = false;
                     audioManager.playSFX('jump');
@@ -573,7 +689,13 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         
         player.x += player.velocityX;
 
-        applyGravityAndPlatformCollision(player, platforms);
+        if (player.isWallSliding) {
+            player.y += player.velocityY;
+            player.onGround = false;
+        } else {
+            applyGravityAndPlatformCollision(player, platforms);
+        }
+
         if(player.onGround) {
             player.canDoubleJump = true;
         }
@@ -591,9 +713,10 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         player.animation.frameTimer = 0;
         player.animation.frameIndex++;
 
-        if (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack') {
+        if (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack' || player.animation.currentState === 'parry') {
             if (player.animation.frameIndex >= animFrames) {
                 player.attacking = false;
+                // Don't reset parry here, it's timer based
                 player.animation.frameIndex = 0; 
             }
         } else {
@@ -602,9 +725,11 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // Determine current state (if not in a fixed state like attack/dash)
-    if (!player.attacking && !player.isDashing) {
+    if (!player.attacking && !player.isDashing && !player.isParrying) {
         let newAnimationState: PlayerState['animation']['currentState'] = 'idle';
-        if (!player.onGround) {
+        if (player.isWallSliding) {
+            newAnimationState = 'wallSlide';
+        } else if (!player.onGround) {
             newAnimationState = 'jump';
         } else if (Math.abs(player.velocityX) > 0.1 && player.chargeTimer === 0) {
             newAnimationState = 'run';
@@ -620,6 +745,15 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.animation.currentState = 'dash';
             player.animation.frameTimer = 0;
             player.animation.frameIndex = 0;
+        }
+    }
+};
+
+export const updateScreenShake = (state: GameState) => {
+    if (state.screenShake.duration > 0) {
+        state.screenShake.duration--;
+        if (state.screenShake.duration === 0) {
+            state.screenShake.magnitude = 0;
         }
     }
 };
@@ -672,6 +806,10 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         dashTrail: [],
         canDoubleJump: true,
         jumpKeyHeld: false,
+        isWallSliding: false,
+        isParrying: false,
+        parryTimer: 0,
+        parryCooldown: 0,
     };
 
     return {
@@ -688,5 +826,7 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         goal: {...levelData.goal},
         currentLevel: levelIndex,
         isoldeAttackTimer: 0,
+        screenShake: { magnitude: 0, duration: 0 },
+        hazards: levelData.hazards ? JSON.parse(JSON.stringify(levelData.hazards)) : [],
     };
 };

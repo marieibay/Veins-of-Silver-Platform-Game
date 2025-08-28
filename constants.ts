@@ -56,6 +56,18 @@ export const DASH_COOLDOWN = 45; // 3/4 of a second
 export const DASH_MANA_COST = 8;
 export const DASH_INVINCIBILITY_DURATION = 12; // A bit longer than the dash itself
 
+// WALL JUMP
+export const WALL_SLIDE_SPEED = 2;
+export const WALL_JUMP_X_POWER = 8;
+export const WALL_JUMP_Y_POWER = 13;
+
+// PARRY
+export const PARRY_DURATION = 8; // frames (very short window)
+export const PARRY_COOLDOWN = 40; // frames
+export const PARRY_MANA_COST = 5;
+export const PARRY_MANA_REGAIN = 15;
+export const ENEMY_STAGGER_DURATION = 90; // 1.5 seconds
+
 // ENEMY ATTACKS
 export const SEEKER_ATTACK_RANGE = 400;
 export const SEEKER_ATTACK_COOLDOWN = 120; // 2 seconds at 60fps
@@ -106,6 +118,8 @@ export const ANIMATION_FRAMES = {
     attack: 4,
     clawAttack: 4,
     dash: 1, // Dash is more of a pose
+    wallSlide: 1,
+    parry: 2,
 };
 
 export const ANIMATION_SPEEDS = { // ticks per animation frame
@@ -115,4 +129,6 @@ export const ANIMATION_SPEEDS = { // ticks per animation frame
     attack: 4,
     clawAttack: 3,
     dash: 1,
+    wallSlide: 1,
+    parry: 4,
 };

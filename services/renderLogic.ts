@@ -1,5 +1,6 @@
 
-import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState } from '../types';
+
+import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState, Hazard } from '../types';
 import * as C from '../constants';
 
 export const drawBackground = (ctx: CanvasRenderingContext2D, camera: Camera) => {
@@ -42,6 +43,25 @@ export const drawPlatforms = (ctx: CanvasRenderingContext2D, platforms: Platform
         for (let y = 0; y < platform.height; y += 10) {
             for (let x = (Math.floor(y / 10) % 2) * 10; x < platform.width; x += 20) {
                 ctx.fillRect(platform.x + x, platform.y + y, 10, 10);
+            }
+        }
+    });
+};
+
+export const drawHazards = (ctx: CanvasRenderingContext2D, hazards: Hazard[]) => {
+    hazards.forEach(hazard => {
+        if (hazard.type === 'spikes') {
+            ctx.fillStyle = '#b8b8b8'; // Light gray for spikes
+            const spikeWidth = 10;
+            const spikeHeight = 10;
+            const numSpikes = Math.floor(hazard.width / spikeWidth);
+            for (let i = 0; i < numSpikes; i++) {
+                ctx.beginPath();
+                ctx.moveTo(hazard.x + i * spikeWidth, hazard.y + spikeHeight);
+                ctx.lineTo(hazard.x + (i + 0.5) * spikeWidth, hazard.y);
+                ctx.lineTo(hazard.x + (i + 1) * spikeWidth, hazard.y + spikeHeight);
+                ctx.closePath();
+                ctx.fill();
             }
         }
     });
@@ -90,6 +110,22 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
             ctx.fillRect(enemy.x + 25, enemy.y + 8, 10, 6);
             ctx.fillRect(enemy.x + 45, enemy.y + 8, 10, 6);
         }
+        
+        // New stagger effect
+        if (enemy.staggerTimer && enemy.staggerTimer > 0) {
+            const staggerX = enemy.x + enemy.width / 2;
+            const staggerY = enemy.y - 10;
+            const angle = (Date.now() / 100) % (Math.PI * 2);
+            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#f0e68c'; // Khaki color for stars
+            for (let i = 0; i < 3; i++) {
+                const starAngle = angle + (i * Math.PI * 2 / 3);
+                const x = staggerX + Math.cos(starAngle) * 10;
+                const y = staggerY + Math.sin(starAngle) * 4;
+                ctx.fillText('*', x, y);
+            }
+        }
+        
         ctx.globalAlpha = 1;
 
         if (enemy.hitTimer > 0) {
@@ -117,7 +153,7 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
 };
 
 export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) => {
-    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf, chargeTimer, isDashing, dashTrail, velocityY } = player;
+    const { x, y, width, height, facing, animation, invincibilityTimer, isWerewolf, chargeTimer, isDashing, dashTrail, velocityY, isWallSliding } = player;
 
     ctx.save();
 
@@ -323,6 +359,44 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
                     ctx.quadraticCurveTo(35, torsoTop + 10 + (i-1)*5, 50, torsoTop - 5 + i*8);
                     ctx.stroke();
                 }
+            }
+            break;
+        }
+        case 'parry': {
+            // Defensive stance
+            drawTorso();
+            drawHead();
+            drawLegs(-legW/2 - 2, legTop, legW/2 + 2, legTop); // Braced stance
+            
+            // Arm holding dagger up
+            ctx.save();
+            ctx.translate(0, torsoTop + 4);
+            const angle = frame === 0 ? -70 : -80; // slight movement
+            ctx.rotate(angle * Math.PI / 180);
+            
+            // Arm
+            ctx.fillStyle = tunic;
+            ctx.fillRect(0, -armW / 2, 16, armW);
+            
+            // Dagger
+            ctx.fillStyle = daggerBlade;
+            ctx.fillRect(16, -2, 20, 4); // Blade
+             ctx.fillStyle = '#8d6e63'; // Hilt
+            ctx.fillRect(14, -3, 2, 6); // Guard
+            ctx.restore();
+            break;
+        }
+        case 'wallSlide': {
+            drawTorso();
+            drawHead();
+            // Legs bent against the wall
+            drawLegs(-legW/2, legTop + 2, legW/2 + 2, legTop);
+            // One arm bracing against the wall
+            drawArm(0, torsoTop + 4, 14, -45);
+            // Particle effect for sliding
+            if (Math.random() > 0.7) {
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
+                ctx.fillRect(width/2 - 2, 20 + Math.random() * 10, 2, 2);
             }
             break;
         }
