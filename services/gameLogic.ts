@@ -16,6 +16,26 @@ export const checkCollision = (
     );
 };
 
+const isGroundAhead = (enemy: Enemy, platforms: Platform[]): boolean => {
+    // The point to check is at the enemy's leading foot, one step forward, and one step down.
+    const nextX = enemy.x + (enemy.speed * enemy.direction);
+    const probeX = enemy.direction === 1 ? nextX + enemy.width : nextX;
+    const probeY = enemy.y + enemy.height + 1; // Check 1px below feet level
+
+    for (const p of platforms) {
+        if (
+            probeX >= p.x &&
+            probeX <= p.x + p.width &&
+            probeY >= p.y &&
+            probeY <= p.y + p.height
+        ) {
+            return true; // Found ground ahead
+        }
+    }
+
+    return false; // No ground ahead
+};
+
 export const updatePlatforms = (state: GameState) => {
     state.platforms.forEach(p => {
         if (p.type === 'horizontal' && p.moveSpeed && p.moveRange && p.startX !== undefined) {
@@ -114,7 +134,7 @@ export const updateProjectiles = (state: GameState) => {
                     audioManager.playSFX('playerHurt');
                     state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
                     state.projectiles.splice(i, 1);
-                    state.screenShake = { magnitude: 5, duration: 15 };
+                    state.screenShake = { magnitude: 2, duration: 15 };
                 }
             }
         }
@@ -194,7 +214,7 @@ export const updateEnemies = (state: GameState) => {
         // Stagger logic
         if (enemy.staggerTimer > 0) {
             enemy.staggerTimer--;
-             if (enemy.type !== 'seeker') {
+             if (enemy.type !== 'seeker' && enemy.type !== 'specter') {
                 applyGravityAndPlatformCollision(enemy, platforms);
             }
             if (enemy.hitTimer > 0) enemy.hitTimer--;
@@ -204,43 +224,85 @@ export const updateEnemies = (state: GameState) => {
 
         // --- AI LOGIC ---
         if (enemy.type === 'enforcer') {
-            if (!enemy.isAggro && distance < C.ENFORCER_AGGRO_RANGE) {
+            if (enemy.attackCooldown === undefined) enemy.attackCooldown = 0;
+            if (enemy.attackPhaseTimer === undefined) enemy.attackPhaseTimer = 0;
+            if (enemy.aggroCooldown === undefined) enemy.aggroCooldown = 0;
+
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+            if (enemy.aggroCooldown > 0) enemy.aggroCooldown--;
+
+            const canReachPlayerVertically = Math.abs(distanceY) < enemy.height * 1.5;
+
+            // --- AGGRO MANAGEMENT ---
+            if (!enemy.isAggro && distance < C.ENFORCER_AGGRO_RANGE && canReachPlayerVertically && enemy.aggroCooldown <= 0) {
                 enemy.isAggro = true;
-                enemy.attackCooldown = 60; // Initial delay
             }
-            if (enemy.isAggro) {
-                // Move towards player when not actively dashing/telling
-                 if (!enemy.attackPattern || enemy.attackPattern === 'idle') {
-                    if (enemy.attackCooldown! > 0) {
-                        enemy.attackCooldown!--;
-                         if (Math.abs(distanceX) > 50) { // Keep moving if not in melee range
-                            enemy.direction = Math.sign(distanceX) as 1 | -1;
+            if (enemy.isAggro && (distance > C.ENFORCER_AGGRO_RANGE * 1.5 || !canReachPlayerVertically)) {
+                enemy.isAggro = false;
+            }
+
+            // --- STATE-BASED ACTION LOGIC ---
+            let isCurrentlyAttacking = enemy.attackPattern === 'tell' || enemy.attackPattern === 'meleeSlash';
+
+            // 1. Decide on action: Attack or Move
+            if (!isCurrentlyAttacking && enemy.isAggro && distance < 60 && canReachPlayerVertically && enemy.attackCooldown <= 0) {
+                // Start a new attack
+                enemy.attackPattern = 'tell';
+                enemy.attackPhaseTimer = 20;
+                enemy.attackCooldown = 90;
+                isCurrentlyAttacking = true;
+            }
+
+            // 2. Execute action
+            if (isCurrentlyAttacking) {
+                // ATTACKING
+                if (enemy.attackPattern === 'tell') {
+                    enemy.attackPhaseTimer!--;
+                    if (enemy.attackPhaseTimer! <= 0) {
+                        enemy.attackPattern = 'meleeSlash';
+                        enemy.attackPhaseTimer = 15;
+                        audioManager.playSFX('daggerAttack');
+                        const hitbox = {
+                            x: enemy.direction === 1 ? enemy.x + enemy.width : enemy.x - 40,
+                            y: enemy.y, width: 40, height: enemy.height
+                        };
+                        if (checkCollision(player, hitbox) && player.invincibilityTimer === 0) {
+                            player.health -= 15;
+                            player.invincibilityTimer = 60;
+                            state.screenShake = { magnitude: 2, duration: 15 };
+                        }
+                    }
+                } else if (enemy.attackPattern === 'meleeSlash') {
+                    enemy.attackPhaseTimer!--;
+                    if (enemy.attackPhaseTimer! <= 0) {
+                        enemy.attackPattern = 'idle';
+                    }
+                }
+            } else {
+                // MOVING
+                if (enemy.isAggro) {
+                    enemy.direction = Math.sign(distanceX) as 1 | -1;
+                    if (isGroundAhead(enemy, platforms)) {
+                        if (Math.abs(distanceX) > 50) { // Don't run into them
                             enemy.x += enemy.speed * enemy.direction;
                         }
                     } else {
-                        enemy.attackPattern = 'tell';
-                        enemy.direction = Math.sign(distanceX) as 1 | -1;
-                        enemy.attackPhaseTimer = C.ENFORCER_TELL_DURATION;
-                        enemy.attackCooldown = C.ENFORCER_DASH_COOLDOWN;
+                        // Hit a ledge while pursuing, give up and go back to patrolling.
+                        enemy.isAggro = false;
+                        enemy.aggroCooldown = 60; // 1s cooldown to prevent re-aggro stutter.
+                        enemy.direction *= -1; // Turn around.
                     }
-                } else if (enemy.attackPattern === 'dash') {
-                    enemy.x += C.ENFORCER_DASH_SPEED * enemy.direction;
-                    enemy.dashTimer!--;
-                    if (enemy.dashTimer! <= 0) enemy.attackPattern = 'idle';
-                } else if (enemy.attackPattern === 'tell') {
-                    enemy.attackPhaseTimer!--;
-                    if (enemy.attackPhaseTimer! <= 0) {
-                        enemy.attackPattern = 'dash';
-                        enemy.dashTimer = C.ENFORCER_DASH_DURATION;
+                } else {
+                    // Patrol logic
+                    const atPatrolEnd = enemy.patrolRange !== undefined &&
+                        ((enemy.direction === 1 && enemy.x >= enemy.startX + enemy.patrolRange) ||
+                         (enemy.direction === -1 && enemy.x <= enemy.startX));
+
+                    if (!isGroundAhead(enemy, platforms) || atPatrolEnd) {
+                        enemy.direction *= -1;
+                    } else {
+                        enemy.x += enemy.speed * enemy.direction;
                     }
-                }
-                if (distance > C.ENFORCER_AGGRO_RANGE * 1.5) enemy.isAggro = false;
-            } else {
-                // Default patrol behavior
-                enemy.x += enemy.speed * enemy.direction;
-                // FIX: Added a check for enemy.patrolRange to prevent runtime errors. The property is optional on the Enemy type.
-                if (enemy.patrolRange !== undefined && (enemy.x < enemy.startX || enemy.x > enemy.startX + enemy.patrolRange)) {
-                    enemy.direction *= -1;
                 }
             }
         }
@@ -276,6 +338,108 @@ export const updateEnemies = (state: GameState) => {
                 audioManager.playSFX('enemyShoot');
             }
         }
+
+        if (enemy.type === 'specter') {
+            if (enemy.teleportTimer === undefined) enemy.teleportTimer = 180; // Time until first teleport
+            if (enemy.teleportState === undefined) enemy.teleportState = 'idle';
+
+            enemy.teleportTimer!--;
+
+            if (enemy.teleportTimer! <= 0 && enemy.teleportState === 'idle') {
+                enemy.teleportState = 'fadingOut';
+                enemy.attackPhaseTimer = 30; // Fade out duration
+                // Find a valid teleport spot on the player's platform
+                const playerPlatform = platforms.find(p => player.onGround && player.y + player.height === p.y - 0);
+                if (playerPlatform) {
+                    enemy.targetX = player.x + (Math.random() > 0.5 ? -1 : 1) * (100 + Math.random() * 50);
+                    enemy.targetX = Math.max(playerPlatform.x, Math.min(enemy.targetX, playerPlatform.x + playerPlatform.width - enemy.width));
+                    enemy.targetY = playerPlatform.y - enemy.height;
+                } else { // Player is in air, teleport near them
+                    enemy.targetX = player.x + (Math.random() > 0.5 ? -1 : 1) * 100;
+                    enemy.targetY = player.y;
+                }
+            }
+
+            // FIX: Refactored the state machine for the specter enemy to resolve an unreachable code error.
+            // The previous logic had a flawed if/else-if chain that made it impossible to check for the post-attack 'fadingOut' state.
+            // This new structure correctly handles both pre-attack (teleport) and post-attack fading.
+            if (enemy.teleportState === 'fadingOut') {
+                enemy.attackPhaseTimer!--;
+                if (enemy.attackPhaseTimer! <= 0) {
+                    if (enemy.teleportTimer! > 0) { // Post-attack fade out
+                        enemy.teleportState = 'idle';
+                    } else { // Pre-attack fade out (teleporting)
+                        enemy.x = enemy.targetX!;
+                        enemy.y = enemy.targetY!;
+                        enemy.teleportState = 'fadingIn';
+                        enemy.attackPhaseTimer = 30; // Fade in duration
+                    }
+                }
+            } else if (enemy.teleportState === 'fadingIn') {
+                enemy.attackPhaseTimer!--;
+                if (enemy.attackPhaseTimer! <= 0) {
+                    enemy.teleportState = 'attacking';
+                    enemy.attackPhaseTimer = 40; // Attack tell + action
+                    enemy.direction = Math.sign(player.x - enemy.x) as 1 | -1;
+                }
+            } else if (enemy.teleportState === 'attacking') {
+                enemy.attackPhaseTimer!--;
+                if (enemy.attackPhaseTimer === 20) { // Attack happens mid-animation
+                    const hitbox = { x: enemy.direction === 1 ? enemy.x : enemy.x - 30, y: enemy.y - 10, width: enemy.width + 30, height: enemy.height + 10};
+                    if (checkCollision(player, hitbox) && player.invincibilityTimer === 0) {
+                        player.health -= 12;
+                        player.invincibilityTimer = 60;
+                    }
+                    audioManager.playSFX('clawAttack');
+                }
+                if (enemy.attackPhaseTimer! <= 0) {
+                     enemy.teleportState = 'fadingOut';
+                     enemy.attackPhaseTimer = 60; // Fade out after attack
+                     enemy.teleportTimer = 240; // Reset main timer for next cycle
+                }
+            }
+        }
+
+        if (enemy.type === 'gargoyle') {
+            if (enemy.attackCooldown === undefined) enemy.attackCooldown = 0;
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+
+            if (!enemy.isAggro && distance < 400) {
+                enemy.isAggro = true; // Wake up
+                enemy.attackPattern = 'tell';
+                enemy.attackPhaseTimer = 30; // Awaken timer
+            }
+            
+            if (enemy.isAggro) {
+                if (enemy.attackPattern === 'tell') {
+                    enemy.attackPhaseTimer!--;
+                    if (enemy.attackPhaseTimer! <= 0) enemy.attackPattern = 'idle';
+                }
+                
+                if (distance < 500 && enemy.attackCooldown <= 0 && enemy.attackPattern === 'idle') {
+                    enemy.attackPattern = 'spit';
+                    enemy.attackPhaseTimer = 45; // Tell before firing
+                    enemy.attackCooldown = 150;
+                }
+
+                if (enemy.attackPattern === 'spit') {
+                    enemy.attackPhaseTimer!--;
+                    if (enemy.attackPhaseTimer! <= 0) {
+                        enemy.attackPattern = 'idle';
+                        const angle = Math.atan2(distanceY, distanceX);
+                        state.projectiles.push({
+                            id: Math.random(), x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2, width: 14, height: 14,
+                            velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED * 1.8, velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED * 1.8,
+                            type: 'darkEnergy', owner: 'enemy', damage: 15,
+                        });
+                        audioManager.playSFX('enemyShoot');
+                    }
+                }
+                 if (distance > 550) { // De-aggro
+                    enemy.isAggro = false;
+                 }
+            }
+        }
         
         if(enemy.type === 'boss') {
             if (enemy.attackCooldown === undefined) enemy.attackCooldown = 120; // Initial delay
@@ -286,7 +450,7 @@ export const updateEnemies = (state: GameState) => {
             const wasAirborne = !enemy.onGround;
             applyGravityAndPlatformCollision(enemy, platforms);
             if (wasAirborne && enemy.onGround && enemy.attackPattern === 'slam') {
-                state.screenShake = { magnitude: 12, duration: 30 };
+                state.screenShake = { magnitude: 6, duration: 30 };
                 state.particles.push({
                     id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height, velocityX: 0, velocityY: 0,
                     life: 30, maxLife: 30, color: 'white', size: C.BOSS_SLAM_RADIUS * 2, type: 'shockwave'
@@ -294,7 +458,7 @@ export const updateEnemies = (state: GameState) => {
                 if (player.onGround && Math.abs(player.x - enemy.x) < C.BOSS_SLAM_RADIUS) {
                     player.health -= C.BOSS_SLAM_DAMAGE;
                     player.invincibilityTimer = 60;
-                    state.screenShake = { magnitude: 15, duration: 30 };
+                    state.screenShake = { magnitude: 8, duration: 30 };
                 }
             }
 
@@ -351,14 +515,14 @@ export const updateEnemies = (state: GameState) => {
             }
         }
         
-        // Universal ground physics for non-seekers
-        if (enemy.type !== 'seeker') {
+        // Universal ground physics for non-floaters
+        if (enemy.type === 'enforcer' || enemy.type === 'boss' || enemy.type === 'gargoyle') {
             applyGravityAndPlatformCollision(enemy, platforms);
         }
 
         if (enemy.hitTimer > 0) enemy.hitTimer--;
 
-        if (checkCollision(player, enemy)) {
+        if (checkCollision(player, enemy) && enemy.type !== 'specter') { // Specters damage with attacks, not contact
             if (player.isParrying) {
                 // Successful melee parry
                 enemy.staggerTimer = C.ENEMY_STAGGER_DURATION;
@@ -373,7 +537,7 @@ export const updateEnemies = (state: GameState) => {
                 audioManager.playSFX('playerHurt');
                 player.velocityY = -5;
                 player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
-                state.screenShake = { magnitude: 8, duration: 20 };
+                state.screenShake = { magnitude: 4, duration: 20 };
             }
         }
     });
@@ -459,7 +623,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 const radius = C.CHARGE_ATTACK_RADIUS_MIN + (C.CHARGE_ATTACK_RADIUS_MAX - C.CHARGE_ATTACK_RADIUS_MIN) * chargeRatio;
                 
                 audioManager.playSFX('chargeRelease');
-                state.screenShake = { magnitude: 8, duration: 20 };
+                state.screenShake = { magnitude: 4, duration: 20 };
 
                 const playerCenterX = player.x + player.width / 2;
                 const playerCenterY = player.y + player.height / 2;
@@ -501,7 +665,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.velocityY = -8; // Knockback
             player.onGround = false;
             audioManager.playSFX('playerHurt');
-            state.screenShake = { magnitude: 5, duration: 15 };
+            state.screenShake = { magnitude: 2, duration: 15 };
         }
     });
 

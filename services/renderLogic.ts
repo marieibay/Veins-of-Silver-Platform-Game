@@ -1,5 +1,4 @@
 
-
 import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState, Hazard } from '../types';
 import * as C from '../constants';
 
@@ -69,49 +68,277 @@ export const drawHazards = (ctx: CanvasRenderingContext2D, hazards: Hazard[]) =>
 
 export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => {
     enemies.forEach(enemy => {
-        let opacity = 1;
-        if (enemy.health < enemy.maxHealth && enemy.health > 0) {
-             opacity = Math.max(0.4, enemy.health / enemy.maxHealth);
+        ctx.save();
+        ctx.translate(enemy.x + enemy.width / 2, enemy.y);
+        if (enemy.direction === -1) {
+            ctx.scale(-1, 1);
         }
-        ctx.globalAlpha = opacity;
 
         if (enemy.type === 'enforcer') {
-            const capeColor = '#1a1a1a'; const bodyColor = '#333333'; const headColor = '#dcdcdc';
-            ctx.fillStyle = capeColor; ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-            ctx.fillStyle = bodyColor; ctx.fillRect(enemy.x + 4, enemy.y, enemy.width - 8, enemy.height - 4);
-            ctx.fillStyle = headColor; ctx.fillRect(enemy.x + 10, enemy.y + 4, enemy.width - 20, 10);
-            ctx.fillStyle = '#8b0000';
-            ctx.fillRect(enemy.x + 12, enemy.y + 7, 3, 2); ctx.fillRect(enemy.x + 17, enemy.y + 7, 3, 2);
+            const coatColor = '#2d3748';
+            const darkCoatColor = '#1a202c';
+            const vestColor = '#800000';
+            const skinColor = '#e2e8f0';
+            const hairColor = '#1a202c';
+            const eyeColor = '#ff4d4d';
+            const pantsColor = '#2d3748';
+            const darkPantsColor = '#1a202c';
+            const bootColor = '#1a202c';
+            const shirtColor = '#f1f5f9';
+
+            // Add vertical bob to give a sense of weight and movement like Tessa
+            const isMoving = (enemy.isAggro || enemy.patrolRange) && enemy.onGround && enemy.attackPattern !== 'tell' && enemy.attackPattern !== 'meleeSlash';
+            const bob = isMoving ? Math.sin(Date.now() / 150) * 1.5 : 0;
+            ctx.translate(0, bob);
+
+            const headY = 4;
+            const torsoY = headY + 12;
+            const bodyWidth = enemy.width / 2;
+            const legTopY = torsoY + 20;
+            const legHeight = 14;
+            const bootHeight = 4;
+            const legWidth = bodyWidth / 2 - 1;
+
+            // --- LEGS (Foreground/Background for depth) ---
+            const step = Date.now() / 150;
+            const legOffset = isMoving ? Math.sin(step) * 4 : 0;
+
+            // Back leg (darker)
+            ctx.fillStyle = darkPantsColor;
+            ctx.fillRect(-bodyWidth / 2 + legOffset, legTopY, legWidth, legHeight);
+            ctx.fillStyle = bootColor;
+            ctx.fillRect(-bodyWidth / 2 + legOffset, legTopY + legHeight, legWidth, bootHeight);
+            
+            // --- TORSO ---
+            // Back Arm (darker, drawn before torso)
+            const armBob = isMoving ? Math.sin(step + Math.PI/2) * 3 : 0;
+            ctx.fillStyle = darkCoatColor;
+            ctx.fillRect(2, torsoY + 2 + armBob, 6, 18);
+
+            // Body & Coat
+            ctx.fillStyle = coatColor;
+            ctx.fillRect(-enemy.width / 2, torsoY, enemy.width, 28); // Coat
+            
+            // Coat collar
+            ctx.beginPath();
+            ctx.moveTo(-enemy.width/2, torsoY);
+            ctx.lineTo(-enemy.width/2 + 4, torsoY - 6);
+            ctx.lineTo(-4, torsoY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(enemy.width/2, torsoY);
+            ctx.lineTo(enemy.width/2 - 4, torsoY - 6);
+            ctx.lineTo(4, torsoY);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = vestColor;
+            ctx.fillRect(-bodyWidth / 2, torsoY, bodyWidth, 22); // Vest
+            ctx.fillStyle = shirtColor;
+            ctx.beginPath(); // Shirt V-neck
+            ctx.moveTo(0, torsoY);
+            ctx.lineTo(-3, torsoY + 5);
+            ctx.lineTo(3, torsoY + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            // --- LEGS (Front leg drawn after torso for layering) ---
+            ctx.fillStyle = pantsColor;
+            ctx.fillRect(1 - legOffset, legTopY, legWidth, legHeight);
+            ctx.fillStyle = bootColor;
+            ctx.fillRect(1 - legOffset, legTopY + legHeight, legWidth, bootHeight);
+
+            // Head & Hair
+            ctx.fillStyle = skinColor;
+            ctx.fillRect(-5, headY, 10, 10); // Face
+            // Add a nose for a clearer side profile
+            ctx.fillRect(5, headY + 4, 2, 4);
+            ctx.fillStyle = hairColor;
+            ctx.fillRect(-6, headY - 2, 12, 5); // Hair top
+
+            // Eyes
+            ctx.fillStyle = eyeColor;
+            ctx.fillRect(1, headY + 4, 2, 2);
+
+            // --- FRONT ARM & SWORD ---
+            const swordHilt = '#4a5568', swordBlade = '#cbd5e0';
+            if (enemy.attackPattern === 'tell' || enemy.attackPattern === 'meleeSlash') {
+                ctx.fillStyle = swordHilt;
+                ctx.fillRect(enemy.width/2 - 8, 20, 4, 12);
+                 if (enemy.attackPattern === 'meleeSlash') {
+                    ctx.fillStyle = swordBlade;
+                    ctx.fillRect(enemy.width/2 - 6, 22, 28, 4);
+                    // Slash arc
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, enemy.height/2, 35, -0.2, 0.4, false);
+                    ctx.stroke();
+                 }
+            } else {
+                // Idle/Moving Front Arm
+                ctx.fillStyle = coatColor;
+                ctx.fillRect(-4, torsoY + 2 - armBob, 6, 18);
+
+                // Sheathed sword
+                const hiltX = -enemy.width/2 + 2;
+                const hiltY = 18;
+                ctx.fillStyle = swordHilt;
+                ctx.fillRect(hiltX, hiltY, 4, 16); // Vertical part of hilt
+                ctx.fillRect(hiltX - 2, hiltY, 8, 4); // Crossguard
+            }
         } else if (enemy.type === 'seeker') {
-            // New: charge-up glow
-            if (enemy.attackCooldown && enemy.attackCooldown > 0 && enemy.attackCooldown < 30) {
-                const glowSize = enemy.width * (1.5 + Math.sin(Date.now() / 50));
-                ctx.fillStyle = `rgba(255, 77, 77, ${0.4 * (1 - enemy.attackCooldown / 30)})`;
+            const bodyColor = '#4a5568'; // Dark slate
+            const wingColor = '#2d3748'; // Darker gray-blue
+            const eyeColor = '#ff4d4d';
+
+            // Floating bob effect
+            const bob = Math.sin(Date.now() / 200 + enemy.id) * 4;
+            ctx.translate(0, bob);
+            
+            const wingFlap = Math.sin(Date.now() / 150 + enemy.id); // -1 to 1 range
+            
+            // Wings (drawn first to be in the back)
+            ctx.fillStyle = wingColor;
+            const wingYControl = -10 + wingFlap * 20;
+
+            // Left wing
+            ctx.beginPath();
+            ctx.moveTo(0, enemy.height * 0.2); // Shoulder
+            ctx.quadraticCurveTo(-enemy.width * 0.8, wingYControl, -enemy.width * 1.5, enemy.height * 0.3); // Top of wing
+            ctx.quadraticCurveTo(-enemy.width * 0.7, enemy.height, 0, enemy.height * 0.8); // Bottom of wing
+            ctx.closePath();
+            ctx.fill();
+            
+            // Right wing
+            ctx.beginPath();
+            ctx.moveTo(0, enemy.height * 0.2); // Shoulder
+            ctx.quadraticCurveTo(enemy.width * 0.8, wingYControl, enemy.width * 1.5, enemy.height * 0.3); // Top of wing
+            ctx.quadraticCurveTo(enemy.width * 0.7, enemy.height, 0, enemy.height * 0.8); // Bottom of wing
+            ctx.closePath();
+            ctx.fill();
+
+            // Body
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath();
+            ctx.ellipse(0, enemy.height / 2, enemy.width / 3, enemy.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head (simple shape on top of body)
+            ctx.beginPath();
+            ctx.arc(0, enemy.height * 0.2, enemy.width/4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = eyeColor;
+            // Left Eye
+            ctx.beginPath();
+            ctx.arc(-4, enemy.height * 0.2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            // Right Eye
+            ctx.beginPath();
+            ctx.arc(4, enemy.height * 0.2, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+        } else if (enemy.type === 'specter') {
+            let baseOpacity = 0.7;
+            if (enemy.teleportState === 'fadingOut' || enemy.teleportState === 'fadingIn') {
+                const timer = enemy.attackPhaseTimer || 0;
+                baseOpacity = (enemy.teleportState === 'fadingOut') ? (timer / 30) * 0.7 : (1 - timer / 30) * 0.7;
+            }
+            if (enemy.teleportState === 'idle') {
+                 baseOpacity = 0; // Invisible when idle
+            }
+            ctx.globalAlpha = baseOpacity;
+            
+            const cloakColor = '#a0aec0';
+            const scytheHandle = '#4a5568', scytheBlade = '#e2e8f0';
+
+            // Cloak
+            ctx.fillStyle = cloakColor;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-enemy.width/2, enemy.height - 5);
+            ctx.lineTo(enemy.width/2, enemy.height - 5);
+            ctx.closePath();
+            ctx.fill();
+
+            // Scythe
+            if (enemy.teleportState === 'attacking') {
+                const swingProgress = 1 - (enemy.attackPhaseTimer || 0) / 40;
+                ctx.save();
+                ctx.rotate(swingProgress * Math.PI * 0.8 - 0.4);
+                ctx.fillStyle = scytheHandle; ctx.fillRect(5, -10, 4, 40);
+                ctx.fillStyle = scytheBlade;
                 ctx.beginPath();
-                ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, glowSize / 2, 0, Math.PI * 2);
+                ctx.moveTo(5, -10);
+                ctx.quadraticCurveTo(30, -25, 35, 0);
+                ctx.fill();
+                ctx.restore();
+            }
+
+        } else if (enemy.type === 'gargoyle') {
+            const stoneColor = '#718096';
+            const darkStone = '#4a5568';
+            ctx.fillStyle = darkStone;
+            ctx.fillRect(-enemy.width/2, 5, enemy.width, enemy.height - 5); // Body
+            ctx.fillStyle = stoneColor;
+            ctx.fillRect(-enemy.width/2 + 5, 0, enemy.width - 10, 15); // Head
+            
+            // Wings
+            ctx.beginPath();
+            ctx.moveTo(-enemy.width/2 + 5, 10);
+            ctx.lineTo(-enemy.width, 25);
+            ctx.lineTo(-enemy.width/2 + 5, 30);
+            ctx.fill();
+
+            if (enemy.isAggro) {
+                let eyeGlow = 0;
+                if (enemy.attackPattern === 'tell' || enemy.attackPattern === 'spit') {
+                    const timer = enemy.attackPhaseTimer || 0;
+                     eyeGlow = Math.min(1, 1 - (timer / 30));
+                }
+                ctx.fillStyle = `rgba(255, 77, 77, ${0.5 + eyeGlow * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(0, 8, 4, 0, Math.PI * 2);
                 ctx.fill();
             }
 
-            ctx.fillStyle = '#4d0000';
-            ctx.globalAlpha = (0.5 + Math.sin(Date.now() / 200) * 0.2) * opacity;
-            ctx.fillRect(enemy.x - 5, enemy.y - 5, enemy.width + 10, enemy.height + 10);
-            ctx.globalAlpha = 1 * opacity;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-            ctx.fillStyle = '#8b0000';
-            ctx.fillRect(enemy.x + 10, enemy.y + 15, 8, 4); ctx.fillRect(enemy.x + 22, enemy.y + 15, 8, 4);
         } else if (enemy.type === 'boss') {
-            const bodyColor = '#3a3a6a'; const armorColor = '#6a6a8a'; const eyeColor = '#ff4d4d';
-            ctx.fillStyle = bodyColor; ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            const armorColor = '#4a5568';
+            const capeColor = '#800000';
+            const skinColor = '#e2e8f0';
+            const eyeColor = '#ff4d4d';
+            const trimColor = '#f6e05e'; // Gold
+
+            // Cape
+            ctx.fillStyle = capeColor;
+            ctx.beginPath();
+            ctx.moveTo(0, 10);
+            ctx.lineTo(-enemy.width/2, enemy.height);
+            ctx.lineTo(enemy.width/2, enemy.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Body
             ctx.fillStyle = armorColor;
-            ctx.fillRect(enemy.x + 10, enemy.y + 20, enemy.width - 20, 10); // Chestplate
-            ctx.fillRect(enemy.x, enemy.y, enemy.width, 20); // Helmet
+            ctx.fillRect(-enemy.width/2 * 0.7, 10, enemy.width * 0.7, enemy.height - 10);
+            
+            // Helmet and horns
+            ctx.fillStyle = armorColor;
+            ctx.fillRect(-15, 0, 30, 20);
+            ctx.fillStyle = trimColor;
+            ctx.fillRect(-25, 0, 10, 5); ctx.fillRect(15, 0, 10, 5);
+            
+            // Eyes
             ctx.fillStyle = eyeColor;
-            ctx.fillRect(enemy.x + 25, enemy.y + 8, 10, 6);
-            ctx.fillRect(enemy.x + 45, enemy.y + 8, 10, 6);
+            ctx.fillRect(-8, 8, 5, 4); ctx.fillRect(3, 8, 5, 4);
         }
         
-        // New stagger effect
+        ctx.restore(); // Restore from direction scale
+
+        // Stagger effect
         if (enemy.staggerTimer && enemy.staggerTimer > 0) {
             const staggerX = enemy.x + enemy.width / 2;
             const staggerY = enemy.y - 10;
@@ -126,15 +353,16 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
             }
         }
         
-        ctx.globalAlpha = 1;
-
         if (enemy.hitTimer > 0) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
         }
 
-        // New Visual Tells for advanced AI
-        if (enemy.attackPattern === 'tell' || (enemy.type === 'boss' && enemy.attackPhaseTimer! > 0)) {
+        // FIX: Corrected a TypeScript comparison error by making the logic for the "tell" visual effect more explicit.
+        // The previous code used a broad check that failed type validation and was also logically redundant.
+        // This now correctly checks only for enforcers in their 'tell' state and bosses in their pre-attack phase.
+        const isTelling = (enemy.type === 'enforcer' && enemy.attackPattern === 'tell') || (enemy.type === 'boss' && (enemy.attackPhaseTimer ?? 0) > 0);
+        if (isTelling) {
             const glowSize = enemy.width * (0.8 + Math.sin(Date.now() / 100) * 0.2);
             let glowColor = 'rgba(255, 255, 100, 0.7)'; // Enforcer tell
             

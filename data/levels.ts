@@ -177,9 +177,10 @@ export const LEVELS: LevelData[] = [
         ],
         enemies: [
             {id: 201, x: 800, y: 802, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 710, patrolRange: 550},
+            {id: 205, x: 1250, y: 400, width: 32, height: 40, health: 40, maxHealth: 40, speed: 0, direction: 1, type: 'gargoyle', hitTimer: 0, startX: 1250},
             {id: 202, x: 1500, y: 452, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1410, patrolRange: 750},
             {id: 203, x: 1800, y: 200, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.5, direction: 1, type: 'seeker', hitTimer: 0, startX: 1600, patrolRange: 400},
-            {id: 204, x: 2400, y: 152, width: 32, height: 48, health: 60, maxHealth: 60, speed: 2.5, direction: -1, type: 'enforcer', hitTimer: 0, startX: 2310, patrolRange: 450}, // "Head Librarian"
+            {id: 204, x: 2400, y: 152, width: 32, height: 48, health: 60, maxHealth: 60, speed: 2.5, direction: -1, type: 'enforcer', hitTimer: 0, startX: 2310, patrolRange: 450},
         ],
         powerUps: [
             {id: 20, x: 1250, y: 570, width: 24, height: 24, type: 'healthVial'},
@@ -209,6 +210,7 @@ export const LEVELS: LevelData[] = [
         ],
         enemies: [
             {id: 301, x: 900, y: 150, width: 40, height: 40, health: 50, maxHealth: 50, speed: 1.8, direction: 1, type: 'seeker', hitTimer: 0, startX: 810, patrolRange: 350},
+            {id: 306, x: 1450, y: 200, width: 32, height: 48, health: 60, maxHealth: 60, speed: 0, direction: 1, type: 'specter', hitTimer: 0, startX: 1450},
             {id: 302, x: 1600, y: 200, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2, direction: -1, type: 'seeker', hitTimer: 0, startX: 1400, patrolRange: 400},
             {id: 303, x: 2200, y: 252, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2010, patrolRange: 450},
             {id: 304, x: 3100, y: 50, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.2, direction: -1, type: 'seeker', hitTimer: 0, startX: 3010, patrolRange: 150},
@@ -247,6 +249,7 @@ export const LEVELS: LevelData[] = [
         ],
         enemies: [
             {id: 401, x: 700, y: 902, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 950},
+            {id: 407, x: 1100, y: 310, width: 32, height: 40, health: 40, maxHealth: 40, speed: 0, direction: 1, type: 'gargoyle', hitTimer: 0, startX: 1100},
             {id: 402, x: 900, y: 902, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.2, direction: -1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 950},
             {id: 403, x: 600, y: 602, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 1950},
             {id: 404, x: 1800, y: 602, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: -1, type: 'enforcer', hitTimer: 0, startX: 510, patrolRange: 1950},
@@ -286,6 +289,7 @@ export const LEVELS: LevelData[] = [
             {id: 501, x: 600, y: 502, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 410, patrolRange: 480},
             {id: 502, x: 1200, y: 400, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2, direction: 1, type: 'seeker', hitTimer: 0, startX: 1110, patrolRange: 380},
             {id: 503, x: 2500, y: 352, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2410, patrolRange: 780},
+            {id: 507, x: 2800, y: 250, width: 32, height: 48, health: 60, maxHealth: 60, speed: 0, direction: 1, type: 'specter', hitTimer: 0, startX: 2800},
             {id: 504, x: 3000, y: 352, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: -1, type: 'enforcer', hitTimer: 0, startX: 2410, patrolRange: 780},
             {id: 505, x: 3900, y: 400, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.5, direction: 1, type: 'seeker', hitTimer: 0, startX: 3810, patrolRange: 1100},
             {id: 506, x: 4500, y: 400, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.5, direction: -1, type: 'seeker', hitTimer: 0, startX: 3810, patrolRange: 1100},
@@ -318,6 +322,7 @@ export const LEVELS: LevelData[] = [
         ],
         enemies: [
             {id: 601, x: 800, y: 602, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 10, patrolRange: 980},
+            {id: 609, x: 1800, y: 500, width: 32, height: 40, health: 40, maxHealth: 40, speed: 0, direction: 1, type: 'gargoyle', hitTimer: 0, startX: 1800},
             {id: 602, x: 1400, y: 552, width: 32, height: 48, health: 30, maxHealth: 30, speed: 1.5, direction: 1, type: 'enforcer', hitTimer: 0, startX: 1210, patrolRange: 480},
             {id: 603, x: 2000, y: 500, width: 40, height: 40, health: 50, maxHealth: 50, speed: 2.2, direction: -1, type: 'seeker', hitTimer: 0, startX: 1910, patrolRange: 1480},
             {id: 604, x: 2800, y: 402, width: 32, height: 48, health: 30, maxHealth: 30, speed: 2, direction: 1, type: 'enforcer', hitTimer: 0, startX: 2610, patrolRange: 380},

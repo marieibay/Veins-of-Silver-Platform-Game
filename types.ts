@@ -67,7 +67,7 @@ export interface Platform {
   direction?: 1 | -1;
 }
 
-export type EnemyType = 'enforcer' | 'seeker' | 'boss';
+export type EnemyType = 'enforcer' | 'seeker' | 'boss' | 'specter' | 'gargoyle';
 
 export interface Enemy {
   id: number;
@@ -87,12 +87,18 @@ export interface Enemy {
   attackCooldown?: number; // Time until next attack
   // New properties for advanced AI
   isAggro?: boolean;
+  aggroCooldown?: number;
   dashTimer?: number;
-  attackPattern?: 'idle' | 'tell' | 'dash' | 'shoot' | 'slam';
+  attackPattern?: 'idle' | 'tell' | 'dash' | 'shoot' | 'slam' | 'meleeSlash' | 'teleportSlash' | 'spit';
   attackPhaseTimer?: number;
   velocityY?: number;
   onGround?: boolean;
   staggerTimer?: number;
+  // Properties for Specter
+  teleportTimer?: number;
+  teleportState?: 'fadingOut' | 'fadingIn' | 'attacking' | 'idle' | 'reposition';
+  targetX?: number;
+  targetY?: number;
 }
 
 export interface Projectile {
