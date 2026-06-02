@@ -104,6 +104,20 @@ export const updateProjectiles = (state: GameState) => {
                     audioManager.playSFX('enemyHit');
                     state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#e0e0e0'));
                     
+                    state.particles.push({
+                        id: Math.random(),
+                        x: enemy.x + enemy.width / 2 + (Math.random() - 0.5) * 15,
+                        y: enemy.y,
+                        velocityX: (Math.random() - 0.5) * 1.5,
+                        velocityY: -3,
+                        life: 40,
+                        maxLife: 40,
+                        color: '#e0e0e0',
+                        size: 11,
+                        type: 'damageText',
+                        text: `-${projectile.damage}`
+                    });
+
                     if (enemy.health <= 0) {
                         const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
                         state.player.experience += xp;
@@ -127,12 +141,41 @@ export const updateProjectiles = (state: GameState) => {
                     audioManager.playSFX('parrySuccess');
                     state.player.isParrying = false;
                     state.player.parryTimer = 0;
+                    
+                    state.particles.push({
+                        id: Math.random(),
+                        x: state.player.x + state.player.width / 2,
+                        y: state.player.y - 15,
+                        velocityX: 0,
+                        velocityY: -3,
+                        life: 45,
+                        maxLife: 45,
+                        color: '#f6e05e',
+                        size: 14,
+                        type: 'damageText',
+                        text: 'REFLECTED!'
+                    });
                     // Don't splice the projectile
                 } else if (state.player.invincibilityTimer === 0) {
                     state.player.health -= projectile.damage;
                     state.player.invincibilityTimer = 60; // 1 second invincibility
                     audioManager.playSFX('playerHurt');
                     state.particles.push(...createHitParticles(state.player.x + state.player.width / 2, state.player.y + state.player.height / 2, 15));
+                    
+                    state.particles.push({
+                        id: Math.random(),
+                        x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 10,
+                        y: state.player.y - 10,
+                        velocityX: (Math.random() - 0.5) * 2,
+                        velocityY: -3,
+                        life: 45,
+                        maxLife: 45,
+                        color: '#f87171',
+                        size: 12,
+                        type: 'damageText',
+                        text: `-${projectile.damage}`
+                    });
+
                     state.projectiles.splice(i, 1);
                     state.screenShake = { magnitude: 2, duration: 15 };
                 }
@@ -530,14 +573,56 @@ export const updateEnemies = (state: GameState) => {
                 audioManager.playSFX('parrySuccess');
                 player.isParrying = false;
                 player.parryTimer = 0;
+                
+                state.particles.push({
+                    id: Math.random(),
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y - 15,
+                    velocityX: 0,
+                    velocityY: -3,
+                    life: 60,
+                    maxLife: 60,
+                    color: '#f6e05e',
+                    size: 14,
+                    type: 'damageText',
+                    text: 'PARRIED!'
+                });
+                state.particles.push({
+                    id: Math.random(),
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + 15,
+                    velocityX: (Math.random() - 0.5) * 2,
+                    velocityY: -2,
+                    life: 50,
+                    maxLife: 50,
+                    color: '#f6e05e',
+                    size: 11,
+                    type: 'damageText',
+                    text: 'STAGGERED'
+                });
                 // Don't take damage or knockback
             } else if (player.invincibilityTimer === 0) {
-                player.health -= enemy.type === 'boss' ? 25 : 10;
+                const dmg = enemy.type === 'boss' ? 25 : 10;
+                player.health -= dmg;
                 player.invincibilityTimer = 60;
                 audioManager.playSFX('playerHurt');
                 player.velocityY = -5;
                 player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
                 state.screenShake = { magnitude: 4, duration: 20 };
+
+                state.particles.push({
+                    id: Math.random(),
+                    x: player.x + player.width / 2,
+                    y: player.y - 15,
+                    velocityX: (Math.random() - 0.5) * 1.5,
+                    velocityY: -3,
+                    life: 50,
+                    maxLife: 50,
+                    color: '#f87171',
+                    size: 13,
+                    type: 'damageText',
+                    text: `-${dmg}`
+                });
             }
         }
     });
@@ -643,6 +728,21 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                         enemy.hitTimer = 10;
                         audioManager.playSFX('enemyHit');
                         particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
+                        
+                        particles.push({
+                            id: Math.random(),
+                            x: enemy.x + enemy.width / 2 + (Math.random() - 0.5) * 20,
+                            y: enemy.y - 15,
+                            velocityX: (Math.random() - 0.5) * 2,
+                            velocityY: -4,
+                            life: 50,
+                            maxLife: 50,
+                            color: '#4cccbd',
+                            size: 16,
+                            type: 'damageText',
+                            text: `-${damage} CRIT!`
+                        });
+
                         if (enemy.health <= 0) {
                             const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
                             state.player.experience += xp;
@@ -666,6 +766,20 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.onGround = false;
             audioManager.playSFX('playerHurt');
             state.screenShake = { magnitude: 2, duration: 15 };
+
+            particles.push({
+                id: Math.random(),
+                x: player.x + player.width / 2,
+                y: player.y - 15,
+                velocityX: (Math.random() - 0.5) * 1.5,
+                velocityY: -3,
+                life: 50,
+                maxLife: 50,
+                color: '#f87171',
+                size: 13,
+                type: 'damageText',
+                text: '-15'
+            });
         }
     });
 
@@ -705,6 +819,21 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     enemy.hitTimer = 10;
                     audioManager.playSFX('enemyHit');
                     particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8));
+                    
+                    particles.push({
+                        id: Math.random(),
+                        x: enemy.x + enemy.width / 2 + (Math.random() - 0.5) * 20,
+                        y: enemy.y - 15,
+                        velocityX: (Math.random() - 0.5) * 1.5,
+                        velocityY: -3 - Math.random() * 2,
+                        life: 45,
+                        maxLife: 45,
+                        color: player.isWerewolf ? '#c084fc' : '#38bdf8',
+                        size: player.isWerewolf ? 15 : 12,
+                        type: 'damageText',
+                        text: `-${damage}`
+                    });
+
                     if (enemy.health <= 0) {
                         const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
                         state.player.experience += xp;
@@ -758,10 +887,38 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     // MOVEMENT & PHYSICS
     const isTryingToMoveHorizontally = (keys['a'] || keys['arrowleft']) || (keys['d'] || keys['arrowright']);
 
+    // Initialize timers if they don't exist
+    if (player.coyoteTimer === undefined) player.coyoteTimer = 0;
+    if (player.jumpBufferTimer === undefined) player.jumpBufferTimer = 0;
+
+    // Coyote time tracking
     if (player.onGround) {
         player.isWallSliding = false;
+        player.coyoteTimer = 10; // 10 frames of coyote time grace
+    } else {
+        if (player.coyoteTimer > 0) player.coyoteTimer--;
     }
     
+    // Jump buffering input listener
+    const jumpPressed = keys[' '] || keys['w'] || keys['arrowup'];
+    if (jumpPressed) {
+        if (!player.jumpKeyHeld) {
+            player.jumpBufferTimer = 8; // Buffer jump for up to 8 frames
+        }
+        player.jumpKeyHeld = true;
+    } else {
+        player.jumpKeyHeld = false;
+
+        // Variable jump height: if button released while ascending, dampen the upward force
+        if (player.velocityY < -2) {
+            player.velocityY *= 0.55;
+        }
+    }
+
+    if (player.jumpBufferTimer > 0) {
+        player.jumpBufferTimer--;
+    }
+
     if (player.isDashing) {
         player.isWallSliding = false; // Cannot wall slide while dashing
         player.dashTimer--;
@@ -781,9 +938,52 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         if (player.chargeTimer > 0) {
             player.velocityX *= C.FRICTION;
         } else if (!player.attacking || player.isWerewolf) {
-            if (keys['a'] || keys['arrowleft']) { player.velocityX = -player.speed; player.facing = -1; } 
-            else if (keys['d'] || keys['arrowright']) { player.velocityX = player.speed; player.facing = 1; } 
-            else { if(!player.attacking) player.velocityX *= C.FRICTION; }
+            const acc = 0.55; // Horizontal acceleration
+            const maxSpeed = player.speed;
+            
+            if (keys['a'] || keys['arrowleft']) { 
+                player.velocityX = Math.max(-maxSpeed, player.velocityX - acc); 
+                player.facing = -1; 
+                
+                // Emitting dust running particles
+                if (player.onGround && Math.random() < 0.2) {
+                    particles.push({
+                        id: Math.random(),
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height,
+                        velocityX: 1 + Math.random() * 2,
+                        velocityY: -Math.random() * 1.5,
+                        life: 15,
+                        maxLife: 15,
+                        color: 'rgba(180, 180, 200, 0.4)',
+                        size: Math.random() * 3 + 2,
+                        type: 'dust'
+                    });
+                }
+            } 
+            else if (keys['d'] || keys['arrowright']) { 
+                player.velocityX = Math.min(maxSpeed, player.velocityX + acc); 
+                player.facing = 1; 
+                
+                // Emitting dust running particles
+                if (player.onGround && Math.random() < 0.2) {
+                    particles.push({
+                        id: Math.random(),
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height,
+                        velocityX: -1 - Math.random() * 2,
+                        velocityY: -Math.random() * 1.5,
+                        life: 15,
+                        maxLife: 15,
+                        color: 'rgba(180, 180, 200, 0.4)',
+                        size: Math.random() * 3 + 2,
+                        type: 'dust'
+                    });
+                }
+            } 
+            else { 
+                if(!player.attacking) player.velocityX *= C.FRICTION; 
+            }
         }
 
         // WALL SLIDE LOGIC
@@ -804,6 +1004,22 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 player.isWallSliding = true;
                 player.velocityY = C.WALL_SLIDE_SPEED;
                 player.canDoubleJump = true; // Reset double jump on wall contact
+                
+                // Emitting wall slide dust
+                if (Math.random() < 0.25) {
+                    particles.push({
+                        id: Math.random(),
+                        x: player.facing === 1 ? player.x + player.width : player.x,
+                        y: player.y + player.height / 2 + Math.random() * 20,
+                        velocityX: (player.facing === 1 ? -1 : 1) * (Math.random() * 1.5),
+                        velocityY: -Math.random() * 0.5,
+                        life: 12,
+                        maxLife: 12,
+                        color: 'rgba(215, 215, 215, 0.5)',
+                        size: Math.random() * 3 + 1,
+                        type: 'dust'
+                    });
+                }
             } else {
                 player.isWallSliding = false;
             }
@@ -811,44 +1027,59 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.isWallSliding = false;
         }
         
-        // JUMP LOGIC
-        const jumpPressed = keys[' '] || keys['w'] || keys['arrowup'];
-        if (jumpPressed) {
-            if (!player.jumpKeyHeld) { // It's a new press
-                if (player.isWallSliding) {
-                    player.velocityY = -C.WALL_JUMP_Y_POWER;
-                    player.velocityX = C.WALL_JUMP_X_POWER * -player.facing;
-                    player.facing *= -1;
-                    player.isWallSliding = false;
-                    audioManager.playSFX('jump');
-                } else if (player.onGround) {
-                    player.velocityY = -player.jumpPower;
-                    player.onGround = false;
-                    audioManager.playSFX('jump');
-                } else if (player.canDoubleJump) {
-                    player.velocityY = -C.PLAYER_DOUBLE_JUMP_POWER;
-                    player.canDoubleJump = false;
-                    audioManager.playSFX('doubleJump');
-                    const particles: Particle[] = [];
-                    for (let i = 0; i < 15; i++) {
-                        particles.push({
-                            id: Math.random(),
-                            x: player.x + player.width / 2,
-                            y: player.y + player.height,
-                            velocityX: (Math.random() - 0.5) * 4,
-                            velocityY: Math.random() * 3 + 1, // Downwards
-                            life: 25,
-                            maxLife: 25,
-                            color: '#f0f0f0',
-                            size: Math.random() * 2 + 1,
-                        });
-                    }
-                    state.particles.push(...particles);
+        // JUMP EXECUTION WITH COYOTE & BUFFERING
+        if (player.jumpBufferTimer > 0) {
+            if (player.isWallSliding) {
+                player.velocityY = -C.WALL_JUMP_Y_POWER;
+                player.velocityX = C.WALL_JUMP_X_POWER * -player.facing;
+                player.facing = -player.facing as 1 | -1;
+                player.isWallSliding = false;
+                player.jumpBufferTimer = 0; // Consume
+                audioManager.playSFX('jump');
+            } else if (player.onGround || player.coyoteTimer > 0) {
+                player.velocityY = -player.jumpPower;
+                player.onGround = false;
+                player.coyoteTimer = 0; // Consume coyote grace
+                player.jumpBufferTimer = 0; // Consume jump buffer
+                audioManager.playSFX('jump');
+                
+                // Jump trail launch particles
+                for (let i = 0; i < 8; i++) {
+                    particles.push({
+                        id: Math.random(),
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        velocityY: (Math.random() - 0.5) * 1 - 1,
+                        life: 15,
+                        maxLife: 15,
+                        color: 'rgba(200, 200, 200, 0.6)',
+                        size: Math.random() * 4 + 2,
+                        type: 'dust'
+                    });
                 }
+            } else if (player.canDoubleJump) {
+                player.velocityY = -C.PLAYER_DOUBLE_JUMP_POWER;
+                player.canDoubleJump = false;
+                player.jumpBufferTimer = 0; // Consume
+                audioManager.playSFX('doubleJump');
+                
+                const djumpParticles: Particle[] = [];
+                for (let i = 0; i < 15; i++) {
+                    djumpParticles.push({
+                        id: Math.random(),
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        velocityY: Math.random() * 3 + 1, // Downwards
+                        life: 25,
+                        maxLife: 25,
+                        color: '#f0f0f0',
+                        size: Math.random() * 2 + 1,
+                    });
+                }
+                particles.push(...djumpParticles);
             }
-            player.jumpKeyHeld = true;
-        } else {
-            player.jumpKeyHeld = false;
         }
         
         player.x += player.velocityX;

@@ -9,9 +9,11 @@ import { LEVELS } from '../data/levels';
 
 const Game = forwardRef<GameHandle, {}>((props, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const backgroundImageRef = useRef<HTMLImageElement | null>(null);
     const gameStateRef = useRef<GameState>(createGameStateForLevel(0));
     const keysPressed = useRef<Record<string, boolean>>({});
     const animationFrameId = useRef<number>(0);
+    const thunderFlashRef = useRef<number>(0);
 
     const [gameStatus, setGameStatus] = useState<GameStatus>('title');
     const [currentLevel, setCurrentLevel] = useState(0);
@@ -29,6 +31,12 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
         upgrades: { maxHealth: 0, maxMana: 0, daggerDamage: 0, clawDamage: 0 },
         lives: C.PLAYER_STARTING_LIVES,
     });
+
+    useEffect(() => {
+        const img = new Image();
+        img.src = `/${(currentLevel % 10) + 2}.webp`;
+        backgroundImageRef.current = img;
+    }, [currentLevel]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -78,6 +86,29 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
         updateProjectiles(state);
         updateParticles(state);
 
+        // Rain/Thunder Logic for Level 9 (index 8)
+        if (currentLevel === 8) {
+            // Add Rain Particles
+            for(let i=0; i<3; i++) {
+                state.particles.push({
+                    id: Math.random(),
+                    x: Math.random() * C.CANVAS_WIDTH,
+                    y: -10,
+                    velocityX: -1 + Math.random() * 2,
+                    velocityY: 8 + Math.random() * 4,
+                    life: 40 + Math.random() * 20,
+                    maxLife: 60,
+                    color: 'rgba(174, 194, 224, 0.5)',
+                    size: 2,
+                    type: 'dust' // Rain can be rendered like small particles
+                });
+            }
+            // Trigger Thunder
+            if (Math.random() < 0.005) {
+                thunderFlashRef.current = 40;
+            }
+        }
+
         if (state.player.y > state.worldHeight + 100) {
             state.player.health = 0;
         }
@@ -113,7 +144,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
                 ctx.translate(shakeX, shakeY);
             }
 
-            drawBackground(ctx, state.camera);
+            drawBackground(ctx, state.camera, backgroundImageRef.current);
             ctx.save();
             ctx.translate(-state.camera.x, -state.camera.y);
             
@@ -129,6 +160,32 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
 
             ctx.restore(); // for camera translate
             ctx.restore(); // for screen shake
+            
+            // Thunder Flash Rendering
+            if (thunderFlashRef.current > 0) {
+                // Flash overlay
+                ctx.fillStyle = `rgba(255, 255, 255, ${thunderFlashRef.current / 160})`;
+                ctx.fillRect(0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT);
+                
+                // Draw a basic lightning bolt for the first few frames
+                if (thunderFlashRef.current > 30) {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    let x = Math.random() * C.CANVAS_WIDTH;
+                    let y = 0;
+                    ctx.moveTo(x, y);
+                    // Create a jagged path
+                    for (let i = 0; i < 5; i++) {
+                        x += (Math.random() - 0.5) * 100;
+                        y += C.CANVAS_HEIGHT / 5;
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+                
+                thunderFlashRef.current--;
+            }
             
             updateUI();
             animationFrameId.current = requestAnimationFrame(gameLoop);

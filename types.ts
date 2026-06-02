@@ -51,6 +51,8 @@ export interface PlayerState {
   isParrying: boolean;
   parryTimer: number;
   parryCooldown: number;
+  coyoteTimer?: number;
+  jumpBufferTimer?: number;
 }
 
 export interface Platform {
@@ -135,7 +137,8 @@ export interface Particle {
   maxLife: number;
   color: string;
   size: number;
-  type?: 'shockwave';
+  type?: 'shockwave' | 'damageText' | 'dust' | 'flash' | 'spark';
+  text?: string;
 }
 
 export interface Camera {

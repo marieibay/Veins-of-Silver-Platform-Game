@@ -2,7 +2,12 @@
 import { PlayerState, Platform, Enemy, Projectile, Particle, Camera, Goal, PowerUp, GameState, Hazard } from '../types';
 import * as C from '../constants';
 
-export const drawBackground = (ctx: CanvasRenderingContext2D, camera: Camera) => {
+export const drawBackground = (ctx: CanvasRenderingContext2D, camera: Camera, backgroundImage: HTMLImageElement | null = null) => {
+    if (backgroundImage && backgroundImage.complete) {
+        ctx.drawImage(backgroundImage, 0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT);
+        return;
+    }
+
     const sky = ctx.createLinearGradient(0, 0, 0, C.CANVAS_HEIGHT);
     sky.addColorStop(0, '#16213e');
     sky.addColorStop(0.6, '#0a0a0a');
@@ -749,6 +754,16 @@ export const drawParticles = (ctx: CanvasRenderingContext2D, particles: Particle
             ctx.beginPath();
             ctx.arc(p.x, p.y, currentRadius, 0, Math.PI * 2);
             ctx.stroke();
+        } else if (p.type === 'damageText' && p.text) {
+            ctx.fillStyle = p.color;
+            ctx.font = `${p.size || 12}px "Press Start 2P"`;
+            ctx.textAlign = 'center';
+            ctx.fillText(p.text, p.x, p.y);
+        } else if (p.type === 'dust') {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+            ctx.fill();
         } else {
             ctx.fillStyle = p.color;
             ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);

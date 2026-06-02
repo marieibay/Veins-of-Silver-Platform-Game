@@ -3,7 +3,7 @@
 // A simple audio manager to handle sound effects and music.
 // Sounds are generated programmatically using the Web Audio API.
 
-type SoundName = 'jump' | 'doubleJump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'daggerThrow' | 'isoldeAssist' | 'upgrade' | 'gameOver' | 'enemyShoot' | 'chargeStart' | 'chargeRelease' | 'playerDash' | 'parryAttempt' | 'parrySuccess';
+type SoundName = 'jump' | 'doubleJump' | 'daggerAttack' | 'clawAttack' | 'enemyHit' | 'enemyDefeated' | 'playerHurt' | 'powerUp' | 'daggerThrow' | 'isoldeAssist' | 'upgrade' | 'gameOver' | 'enemyShoot' | 'chargeStart' | 'chargeRelease' | 'playerDash' | 'parryAttempt' | 'parrySuccess' | 'thunder';
 
 class AudioManager {
     private audioContext: AudioContext | null = null;
@@ -263,6 +263,10 @@ class AudioManager {
             case 'parrySuccess':
                 this.playSound('square', 1200, 0.05, 0.4, { frequencyEnd: 1000 });
                 this.playNoise(0.1, 0.2, 5.0);
+                break;
+            case 'thunder':
+                this.playSound('sawtooth', 50, 0.8, 0.4, { frequencyEnd: 30 });
+                this.playNoise(0.8, 0.3, 0.5);
                 break;
             case 'gameOver':
                 // A longer, more dramatic sound with a descending arpeggio and a final low drone.

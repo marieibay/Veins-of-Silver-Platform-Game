@@ -11,26 +11,26 @@ interface TitleScreenProps {
 
 export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart, onShowControls }) => (
     <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-30 p-8 text-center">
-        <h1 className="text-5xl text-red-400 text-glow mb-2" style={{ fontFamily: "'Press Start 2P', cursive" }}>VEINS OF SILVER</h1>
-        <h2 className="text-xl text-slate-300 mb-8" style={{ fontFamily: "'Press Start 2P', cursive" }}>SHADOWS UNBOUND</h2>
+        <h1 className="text-7xl text-red-500 text-glow mb-6 font-pixel">VEINS OF SILVER</h1>
+        <h2 className="text-2xl text-white tracking-[0.3em] mb-12 font-pixel">SHADOWS UNBOUND</h2>
         
-        <p className="max-w-xl text-slate-400 mb-12" style={{ fontFamily: "'Courier New', monospace" }}>
+        <p className="max-w-2xl text-slate-300 text-sm leading-relaxed mb-16 opacity-90 font-mono">
             Hunted by a corrupt Council, you must rely on your forbidden bloodline and the aid of a rogue vampire, Isolde, to survive. Can you master your powers and uncover the truth before the shadows consume you?
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-8">
              <button 
                 onClick={onStart}
-                className="start-game-button"
+                className="start-game-button px-12 py-5 text-xl font-pixel"
             >
-                Start Game
+                START GAME
             </button>
             <button
                 onClick={onShowControls}
-                className="start-game-button"
-                style={{ background: 'linear-gradient(to right, #4a5568, #2d3748)', borderColor: '#1a202c' }}
+                className="start-game-button px-12 py-5 text-xl font-pixel"
+                style={{ background: 'linear-gradient(to bottom, #374151, #1f2937)', borderColor: '#111827' }}
             >
-                Controls
+                CONTROLS
             </button>
         </div>
     </div>
@@ -82,7 +82,8 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
 
     return (
         <div className="absolute inset-0 bg-black flex flex-col justify-center items-center z-30 p-8 text-center cursor-pointer" onClick={onComplete}>
-            <div className="max-w-xl text-slate-300 text-lg h-48" style={{ fontFamily: "'Courier New', monospace" }}>
+            <img src="/1.webp" alt="Intro Background" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+            <div className="relative max-w-xl text-slate-300 text-lg h-48 z-10" style={{ fontFamily: "'Courier New', monospace" }}>
                 {lines.map((line, index) => (
                      <p key={index} className={`transition-opacity duration-1000 ${index <= currentLineIndex ? 'opacity-100' : 'opacity-0'}`}>
                         {index === currentLineIndex ? typedText : (index < currentLineIndex ? line : ' ')}
@@ -90,8 +91,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 ))}
             </div>
              <button
-                className="absolute bottom-10 right-10 text-slate-400 font-bold uppercase tracking-widest animate-pulse hover:text-white pointer-events-none"
-                style={{ fontFamily: "'Press Start 2P', cursive" }}
+                className="absolute bottom-5 right-5 z-10 text-slate-400 font-bold uppercase tracking-widest animate-pulse hover:text-white pointer-events-none font-pixel"
             >
                 {isComplete ? 'Continue' : 'Skip'}
             </button>
@@ -108,21 +108,18 @@ interface GameOverScreenProps {
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({ score, onRestart }) => (
     <div className="absolute inset-0 bg-black bg-opacity-80 flex flex-col justify-center items-center z-30">
         <h2 
-            className="text-5xl text-red-400 text-glow mb-4" 
-            style={{ fontFamily: "'Press Start 2P', cursive" }}
+            className="text-5xl text-red-400 text-glow mb-4 font-pixel"
         >
             GAME OVER
         </h2>
         <p 
-            className="text-base text-yellow-400 mb-8"
-            style={{ fontFamily: "'Press Start 2P', cursive" }}
+            className="text-base text-yellow-400 mb-8 font-pixel"
         >
             Final Score: {score}
         </p>
         <button 
             onClick={onRestart}
-            className="bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
-            style={{ fontFamily: "'Press Start 2P', cursive" }}
+            className="bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 rounded-none uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300 font-pixel"
         >
             Main Menu
         </button>
@@ -246,7 +243,7 @@ export const UpgradeScreen: React.FC<UpgradeScreenProps> = ({ uiState, onPurchas
 
     return (
          <div className="absolute inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-30 p-8 text-white font-mono">
-            <h2 className="text-3xl text-teal-400 font-bold mb-4" style={{ fontFamily: "'Press Start 2P', cursive" }}>UPGRADES</h2>
+            <h2 className="text-3xl text-teal-400 font-bold mb-4 font-pixel">UPGRADES</h2>
             <p className="text-yellow-400 mb-6">Spend XP to unlock permanent upgrades.</p>
             <p className="text-xl text-yellow-400 mb-8">Available XP: {experience}</p>
 
@@ -297,7 +294,7 @@ export const UpgradeScreen: React.FC<UpgradeScreenProps> = ({ uiState, onPurchas
 
 export const PauseScreen: React.FC = () => (
     <div className="absolute inset-0 bg-black bg-opacity-60 flex flex-col justify-center items-center z-30">
-        <h2 className="text-4xl text-white text-glow" style={{ fontFamily: "'Press Start 2P', cursive" }}>PAUSED</h2>
+        <h2 className="text-4xl text-white text-glow font-pixel">PAUSED</h2>
     </div>
 );
 
@@ -323,7 +320,7 @@ interface ControlsScreenProps {
 export const ControlsScreen: React.FC<ControlsScreenProps> = ({ onBack }) => {
     return (
         <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a0a] via-[#1a1a2e] to-[#16213e] flex flex-col justify-center items-center z-40 p-4 text-white">
-            <h2 className="text-4xl text-yellow-400 text-glow mb-6" style={{ fontFamily: "'Press Start 2P', cursive" }}>
+            <h2 className="text-4xl text-yellow-400 text-glow mb-6 font-pixel">
                 CONTROLS
             </h2>
 
@@ -368,7 +365,7 @@ export const ControlsScreen: React.FC<ControlsScreenProps> = ({ onBack }) => {
                 />
                 <ControlRow
                     action="Charged Blast"
-                    keys={<>Hold <KeyCap>S</KeyCap> or <KeyCap>↓</KeyCap></>}
+                    keys={<>Hold <KeyCap>S</KeyCap></>}
                     description="Hold to charge a powerful area-of-effect attack. Consumes more mana for a longer charge."
                 />
 
@@ -387,8 +384,7 @@ export const ControlsScreen: React.FC<ControlsScreenProps> = ({ onBack }) => {
 
             <button
                 onClick={onBack}
-                className="mt-8 bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300"
-                style={{ fontFamily: "'Press Start 2P', cursive" }}
+                className="mt-8 bg-gradient-to-r from-slate-500 to-slate-700 text-white font-bold py-3 px-8 uppercase tracking-widest shadow-lg transform hover:scale-105 transition-transform duration-300 font-pixel"
             >
                 Back
             </button>
