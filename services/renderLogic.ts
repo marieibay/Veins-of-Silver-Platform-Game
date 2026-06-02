@@ -311,34 +311,38 @@ export const drawEnemies = (ctx: CanvasRenderingContext2D, enemies: Enemy[]) => 
             }
 
         } else if (enemy.type === 'boss') {
-            const armorColor = '#4a5568';
-            const capeColor = '#800000';
-            const skinColor = '#e2e8f0';
+            const paleSkin = '#e2e8f0';
+            const bodyColor = '#2d3748'; // Darker garment
+            const capeColor = '#5c0000';
             const eyeColor = '#ff4d4d';
-            const trimColor = '#f6e05e'; // Gold
 
-            // Cape
+            // Cape (with collar)
             ctx.fillStyle = capeColor;
             ctx.beginPath();
             ctx.moveTo(0, 10);
-            ctx.lineTo(-enemy.width/2, enemy.height);
-            ctx.lineTo(enemy.width/2, enemy.height);
+            ctx.lineTo(-enemy.width * 0.5, enemy.height + 5);
+            ctx.lineTo(enemy.width * 0.5, enemy.height + 5);
             ctx.closePath();
             ctx.fill();
+            // Collar
+            ctx.fillStyle = capeColor;
+            ctx.fillRect(-enemy.width * 0.4, -2, enemy.width * 0.8, 12);
 
             // Body
-            ctx.fillStyle = armorColor;
-            ctx.fillRect(-enemy.width/2 * 0.7, 10, enemy.width * 0.7, enemy.height - 10);
+            ctx.fillStyle = bodyColor;
+            ctx.fillRect(-enemy.width * 0.3, 10, enemy.width * 0.6, enemy.height - 10);
             
-            // Helmet and horns
-            ctx.fillStyle = armorColor;
-            ctx.fillRect(-15, 0, 30, 20);
-            ctx.fillStyle = trimColor;
-            ctx.fillRect(-25, 0, 10, 5); ctx.fillRect(15, 0, 10, 5);
+            // Head
+            ctx.fillStyle = paleSkin;
+            ctx.fillRect(-12, -2, 24, 22);
+            
+            // Fangs
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-6, 12, 3, 5); ctx.fillRect(3, 12, 3, 5);
             
             // Eyes
             ctx.fillStyle = eyeColor;
-            ctx.fillRect(-8, 8, 5, 4); ctx.fillRect(3, 8, 5, 4);
+            ctx.fillRect(-8, 5, 5, 3); ctx.fillRect(3, 5, 5, 3);
         }
         
         ctx.restore(); // Restore from direction scale
@@ -433,7 +437,7 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
     // --- Animation Definitions ---
     
     const headSize = 12, neckH = 2, torsoH = 18, armW = 6, legW = 8, feetH = 4;
-    const hair = isWerewolf ? '#4a4a4a' : '#6d4c41', skin = isWerewolf ? '#a1887f' : '#f0d9b5', tunic = isWerewolf ? '#424242' : '#00695c', pants = isWerewolf ? '#333333' : '#4e342e', boots = isWerewolf ? '#212121' : '#3e2723', daggerBlade = '#e0e0e0', eyeColor = isWerewolf ? '#fdd835' : 'black';
+    const hair = isWerewolf ? '#4a4a4a' : '#3E2723', skin = isWerewolf ? '#a1887f' : '#f0d9b5', tunic = isWerewolf ? '#424242' : '#00695c', pants = isWerewolf ? '#333333' : '#4e342e', boots = isWerewolf ? '#212121' : '#3e2723', daggerBlade = '#e0e0e0', eyeColor = isWerewolf ? '#fdd835' : 'black';
 
     const werewolfClaws = (x_offset: number, y_offset: number) => {
         if (!isWerewolf) return;
@@ -443,12 +447,35 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
         ctx.fillRect(x_offset, y_offset + 8, 4, 2);
     };
 
-    const drawHead = (bob = 0) => {
+    const drawHead = (bob = 0, angle = 0) => {
         const headY = bob;
-        ctx.fillStyle = hair; ctx.fillRect(-headSize / 2 - 2, headY - 2, headSize + 4, headSize + 4);
-        if (!isWerewolf) ctx.fillRect(headSize / 2, headY + 5, 5, 15); // Ponytail
-        ctx.fillStyle = skin; ctx.fillRect(-headSize / 2, headY, headSize, headSize);
-        ctx.fillStyle = eyeColor; ctx.fillRect(headSize / 2 - 3, headY + 4, 2, 2);
+        
+        ctx.save();
+        ctx.translate(0, headY);
+        ctx.rotate(angle * Math.PI / 180);
+
+        // --- HAIR (Behind Face) ---
+        ctx.fillStyle = hair;
+        // Hair volume (back)
+        ctx.fillRect(-headSize / 2 - 2, -3, headSize + 2, headSize);
+        // Long hair strand back
+        ctx.fillRect(-headSize / 2 - 2, 0, 6, 25);
+        
+        // --- FACE ---
+        ctx.fillStyle = skin;
+        // Face shape 
+        ctx.fillRect(-headSize / 2 + 3, 1, headSize - 6, headSize - 2);
+
+        // --- HAIR (Front detail / Bangs) ---
+        ctx.fillStyle = hair;
+        // Bangs
+        ctx.fillRect(-headSize / 2 + 2, 1, headSize - 4, 3);
+        
+        // Eye
+        ctx.fillStyle = eyeColor; 
+        ctx.fillRect(headSize / 2 - 4, 4, 2, 2);
+
+        ctx.restore();
     };
 
     const drawTorso = (bob = 0) => {
@@ -470,6 +497,11 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
         ctx.rotate(angle * Math.PI / 180);
         ctx.fillStyle = tunic;
         ctx.fillRect(0, -armW / 2, length, armW);
+        
+        // Add a small hand at the end of the arm
+        ctx.fillStyle = skin;
+        ctx.fillRect(length, -armW / 2, 4, armW);
+
         werewolfClaws(length -2, -armW);
         ctx.restore();
     };
@@ -481,9 +513,10 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
     
     switch (animation.currentState) {
         case 'idle': {
+            const tilt = Math.sin(frame / C.ANIMATION_FRAMES.idle * Math.PI * 2) * 2;
             const bob = Math.sin(frame / C.ANIMATION_FRAMES.idle * Math.PI * 2) * 1;
             drawTorso(bob);
-            drawHead(bob);
+            drawHead(bob, tilt);
             drawLegs(-legW/2, legTop, legW/2, legTop);
             drawArm(0, torsoTop + 4, 14, -10);
             break;
@@ -491,12 +524,13 @@ export const drawPlayer = (ctx: CanvasRenderingContext2D, player: PlayerState) =
         case 'run': {
             const bob = Math.abs(Math.sin(frame / C.ANIMATION_FRAMES.run * Math.PI)) * -2;
             const step = frame / C.ANIMATION_FRAMES.run;
-            const armAngle = Math.sin(step * Math.PI * 2) * 40;
-            const legAngle = Math.sin(step * Math.PI * 2) * 4;
+            const armAngle = Math.sin(step * Math.PI * 2) * 50; // Increased swing
+            const legAngle = Math.sin(step * Math.PI * 2) * 6;  // Increased step
+            const tilt = Math.sin(step * Math.PI * 2) * 5;
             drawTorso(bob);
-            drawHead(bob);
+            drawHead(bob, tilt);
             drawLegs(-legW/2 + legAngle, legTop, legW/2 - legAngle, legTop);
-            drawArm(0, torsoTop + 4, 16, armAngle);
+            drawArm(0, torsoTop + 4, 18, armAngle); // Increased swing length
             break;
         }
         case 'jump': {

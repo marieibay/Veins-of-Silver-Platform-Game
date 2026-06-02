@@ -926,6 +926,20 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         player.dashTrail.unshift({ x: player.x, y: player.y, facing: player.facing });
         if (player.dashTrail.length > 5) player.dashTrail.pop();
 
+        // Dash particles
+        particles.push({
+            id: Math.random(),
+            x: player.x + (player.facing === 1 ? 0 : player.width),
+            y: player.y + player.height / 2,
+            velocityX: -player.velocityX * 0.5 + (Math.random() - 0.5),
+            velocityY: (Math.random() - 0.5) * 2,
+            life: 15,
+            maxLife: 15,
+            color: 'rgba(255, 255, 255, 0.3)',
+            size: Math.random() * 3 + 2,
+            type: 'dust'
+        });
+
         if (player.dashTimer <= 0) {
             player.isDashing = false;
             player.velocityX *= 0.5; // Keep some momentum
@@ -1088,7 +1102,25 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.y += player.velocityY;
             player.onGround = false;
         } else {
-            applyGravityAndPlatformCollision(player, platforms);
+            const wasJustGrounded = !player.onGround;
+            const isNowGrounded = applyGravityAndPlatformCollision(player, platforms);
+
+            if (isNowGrounded && wasJustGrounded && Math.abs(player.velocityY!) > 5) {
+                for(let i=0; i<5; i++) {
+                    particles.push({
+                        id: Math.random(),
+                        x: player.x + player.width / 2 + (Math.random() - 0.5) * 20,
+                        y: player.y + player.height,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        velocityY: -(Math.random() * 2),
+                        life: 20,
+                        maxLife: 20,
+                        color: 'rgba(180, 180, 200, 0.5)',
+                        size: Math.random() * 4 + 2,
+                        type: 'dust'
+                    });
+                }
+            }
         }
 
         if(player.onGround) {
