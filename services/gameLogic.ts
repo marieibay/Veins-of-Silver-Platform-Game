@@ -62,20 +62,230 @@ const getDamage = (base: number, upgradeLevel: number, upgradeValues: number[]) 
 
 const createHitParticles = (x: number, y: number, count: number, color = '#ff4d4d'): Particle[] => {
     const particles: Particle[] = [];
+    
+    // Check if the particle is organic blood (any variant of red/crimson)
+    const isBlood = color === '#ff4d4d' || color === '#ff0000' || color === '#991b1b' || color === '#ef4444' || color === '#ff3333';
+    
+    // Scale count reasonably for a balanced feel: lower multiplier so it doesn't swarm the screen
+    const activeCount = isBlood ? Math.floor(count * 0.7) : count;
+    
+    for (let i = 0; i < activeCount; i++) {
+        if (isBlood) {
+            // Gothic palette of deep venous blood, arterial crimson, and dark coagulated clots
+            const bloodColors = ['#9b1c1c', '#7f1d1d', '#b91c1c', '#580505', '#450606'];
+            const chosenColor = bloodColors[Math.floor(Math.random() * bloodColors.length)];
+            
+            // Fling blood droplets radially with balanced velocity dispersion
+            const speedFactor = 1.0 + Math.random() * 2.0;
+            const angle = Math.random() * Math.PI * 2;
+            
+            particles.push({
+                id: Math.random(),
+                x: x + (Math.random() - 0.5) * 4,
+                y: y + (Math.random() - 0.5) * 4,
+                velocityX: Math.cos(angle) * speedFactor * 1.5,
+                velocityY: Math.sin(angle) * speedFactor * 1.5 - 0.8, // eject slightly upwards
+                life: 25 + Math.floor(Math.random() * 25), // cleaner duration, disappears faster
+                maxLife: 50,
+                color: chosenColor,
+                size: 0.8 + Math.random() * 1.4, // much smaller, elegant droplet sizes
+                type: 'blood'
+            });
+        } else {
+            // Non-blood sparks
+            particles.push({
+                id: Math.random(),
+                x,
+                y,
+                velocityX: (Math.random() - 0.5) * 6,
+                velocityY: (Math.random() - 0.5) * 6,
+                life: 25,
+                maxLife: 25,
+                color,
+                size: Math.random() * 3 + 1,
+            });
+        }
+    }
+    
+    // Inject subtle translucent blood mist clouds upon major splatters
+    if (isBlood && count >= 15) {
+        const mistCount = Math.min(2, Math.floor(count / 10));
+        for (let i = 0; i < mistCount; i++) {
+            particles.push({
+                id: Math.random(),
+                x: x + (Math.random() - 0.5) * 8,
+                y: y + (Math.random() - 0.5) * 8,
+                velocityX: (Math.random() - 0.5) * 0.8,
+                velocityY: -0.3 - Math.random() * 0.6,
+                life: 20 + Math.random() * 15,
+                maxLife: 35,
+                color: 'rgba(127, 29, 29, 0.15)', // Extremely faint and subtle
+                size: 3 + Math.random() * 3, // Much smaller mist sizes
+                type: 'dust'
+            });
+        }
+    }
+    
+    return particles;
+};
+
+const createSplinterParticles = (x: number, y: number, count: number, isUrn = false): Particle[] => {
+    const list: Particle[] = [];
+    const colors = isUrn ? ['#b45309', '#78350f', '#ca8a04', '#451a03'] : ['#8d5b4c', '#5d382e', '#b78274', '#3e2723'];
     for (let i = 0; i < count; i++) {
-        particles.push({
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.2 + Math.random() * 3.8;
+        list.push({
             id: Math.random(),
-            x,
-            y,
-            velocityX: (Math.random() - 0.5) * 5,
-            velocityY: (Math.random() - 0.5) * 5,
-            life: 20,
-            maxLife: 20,
-            color,
-            size: Math.random() * 3 + 1,
+            x: x + (Math.random() - 0.5) * 8,
+            y: y + (Math.random() - 0.5) * 8,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed - 1.2, // Fling upwards slightly with gravity
+            life: 45 + Math.floor(Math.random() * 45), // Durable splinters
+            maxLife: 90,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: 1.8 + Math.random() * 2.5,
+            type: 'splinter'
         });
     }
-    return particles;
+    return list;
+};
+
+const spawnBreakableLoot = (state: GameState, enemy: Enemy) => {
+    const chance = Math.random();
+    const id = Math.random();
+    const x = enemy.x + (enemy.width - 24) / 2;
+    // Align drop neatly to the floor platform
+    const y = enemy.y + enemy.height - 24;
+    
+    // Total drop chance reduced from 80% to 50%
+    if (chance < 0.50) {
+        return; // Empty
+    } else if (chance < 0.70) { // Coin (prob 20%)
+        state.powerUps.push({ id, x, y, width: 24, height: 24, type: 'coin' });
+    } else if (chance < 0.85) { // Lunar Fragment (prob 15%)
+        state.powerUps.push({ id, x, y, width: 24, height: 24, type: 'lunarFragment' });
+    } else if (chance < 0.95) { // Health Vial (prob 10%)
+        state.powerUps.push({ id, x, y, width: 24, height: 24, type: 'healthVial' });
+    } else { // Isolde Aid (prob 5%)
+        state.powerUps.push({ id, x, y, width: 24, height: 24, type: 'isoldeAid' });
+    }
+};
+
+const spawnBossHitSparks = (state: GameState, enemy: Enemy, attackColor: string) => {
+    const enemyCenterX = enemy.x + enemy.width / 2;
+    const enemyCenterY = enemy.y + enemy.height / 2;
+    
+    // 1. Spitting high-speed weapon sparks
+    for (let i = 0; i < 12; i++) {
+        const speed = 4 + Math.random() * 6;
+        const angle = Math.random() * Math.PI * 2;
+        state.particles.push({
+            id: Math.random(),
+            x: enemyCenterX,
+            y: enemyCenterY,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed,
+            life: 25 + Math.floor(Math.random() * 15),
+            maxLife: 40,
+            color: Math.random() > 0.5 ? '#f6e05e' : attackColor, // blend gold trim or weapon color
+            size: 2 + Math.random() * 2,
+            type: 'spark'
+        });
+    }
+
+    // 2. Heavy monstrous/crimson dust & blood debris falling down (Boss black blood)
+    for (let i = 0; i < 24; i++) {
+        state.particles.push({
+            id: Math.random(),
+            x: enemyCenterX + (Math.random() - 0.5) * 20,
+            y: enemyCenterY + (Math.random() - 0.5) * 20,
+            velocityX: (Math.random() - 0.5) * 7,
+            velocityY: -(3 + Math.random() * 6), // fling high and let gravity take them
+            life: 80 + Math.floor(Math.random() * 60),
+            maxLife: 150,
+            color: Math.random() > 0.4 ? '#310000' : '#110000', // corrupt rotten black blood
+            size: 2.5 + Math.random() * 4.5,
+            type: 'blood'
+        });
+    }
+};
+
+const spawnBossEnvironmentDebris = (state: GameState, enemy: Enemy, count = 15) => {
+    const bottomX = enemy.x + enemy.width / 2;
+    const bottomY = enemy.y + enemy.height;
+    
+    // Spawn heavy dust and stone debris from ground impact
+    for (let i = 0; i < count; i++) {
+        const color = Math.random() > 0.5 ? '#64748b' : '#374151'; // stone/ground colors
+        const velX = (Math.random() - 0.5) * 8;
+        const velY = -(2 + Math.random() * 6);
+        state.particles.push({
+            id: Math.random(),
+            x: bottomX + (Math.random() - 0.5) * enemy.width,
+            y: bottomY - 3,
+            velocityX: velX,
+            velocityY: velY,
+            life: 25 + Math.floor(Math.random() * 20),
+            maxLife: 45,
+            color,
+            size: 3 + Math.random() * 5,
+            type: 'dust'
+        });
+    }
+};
+
+const triggerBossWallSlam = (state: GameState, enemy: Enemy, side: 'left' | 'right') => {
+    enemy.dashTimer = 0;
+    enemy.attackPattern = 'idle';
+    // stun the boss slightly for a tactical advantage!
+    enemy.attackCooldown = 100; // extra resting cooldown
+    enemy.hitTimer = 25; // flicker white like damage
+    
+    // Shake screen intensely
+    state.screenShake = { magnitude: 7, duration: 20 };
+    audioManager.playSFX('enemyHit');
+    
+    const xPos = side === 'left' ? 0 : state.worldWidth;
+    const yPos = enemy.y + enemy.height / 2;
+    const dirFactor = side === 'left' ? 1 : -1;
+    
+    // Spawn high velocity sparks and stone rubble blasting out from the wall
+    for (let i = 0; i < 15; i++) {
+        const speed = 4 + Math.random() * 8;
+        const spreadAngle = (Math.random() - 0.5) * (Math.PI / 2); // 90 degree spread cone
+        const angle = (side === 'left' ? 0 : Math.PI) + spreadAngle;
+        
+        state.particles.push({
+            id: Math.random(),
+            x: xPos,
+            y: yPos + (Math.random() - 0.5) * enemy.height,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed,
+            life: 20 + Math.floor(Math.random() * 15),
+            maxLife: 35,
+            color: '#f6e05e', // glowing yellow sparks as stone shears
+            size: 2 + Math.random() * 2,
+            type: 'spark'
+        });
+    }
+    
+    for (let i = 0; i < 12; i++) {
+        const velX = dirFactor * (1 + Math.random() * 5);
+        const velY = -2 - Math.random() * 4;
+        state.particles.push({
+            id: Math.random(),
+            x: xPos,
+            y: yPos + (Math.random() - 0.5) * enemy.height,
+            velocityX: velX,
+            velocityY: velY,
+            life: 35 + Math.floor(Math.random() * 15),
+            maxLife: 50,
+            color: '#64748b', // stone grey debris
+            size: 4 + Math.random() * 6,
+            type: 'dust'
+        });
+    }
 };
 
 export const updateProjectiles = (state: GameState) => {
@@ -101,8 +311,20 @@ export const updateProjectiles = (state: GameState) => {
                 if (checkCollision(projectile, enemy)) {
                     enemy.health -= projectile.damage;
                     enemy.hitTimer = 10;
-                    audioManager.playSFX('enemyHit');
-                    state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#e0e0e0'));
+                    if (enemy.type === 'boss') {
+                        state.hitStopTimer = 6; // Hit stop frame delay for boss projectile pierce
+                        state.screenShake = { magnitude: 5, duration: 15 };
+                        spawnBossHitSparks(state, enemy, projectile.type === 'dagger' ? '#e0e0e0' : '#4dccbd');
+                    } else if (enemy.type === 'crate' || enemy.type === 'urn') {
+                        audioManager.playSFX('enemyHit');
+                        state.particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 7, enemy.type === 'urn'));
+                    } else {
+                        state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, '#e0e0e0'));
+                        if (projectile.type === 'dagger') {
+                            // Let thrown spectral daggers slice and draw crimson blood!
+                            state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 14, '#ff4d4d'));
+                        }
+                    }
                     
                     state.particles.push({
                         id: Math.random(),
@@ -119,11 +341,17 @@ export const updateProjectiles = (state: GameState) => {
                     });
 
                     if (enemy.health <= 0) {
-                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
-                        state.player.experience += xp;
-                        state.score += xp;
-                        audioManager.playSFX('enemyDefeated');
-                        state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                        if (enemy.type === 'crate' || enemy.type === 'urn') {
+                            audioManager.playSFX('enemyDefeated');
+                            state.particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 22, enemy.type === 'urn'));
+                            spawnBreakableLoot(state, enemy);
+                        } else {
+                            const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                            state.player.experience += xp;
+                            state.score += xp;
+                            audioManager.playSFX('enemyDefeated');
+                            state.particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 36, '#ff4d4d'));
+                        }
                     }
     
                     state.projectiles.splice(i, 1);
@@ -141,6 +369,8 @@ export const updateProjectiles = (state: GameState) => {
                     audioManager.playSFX('parrySuccess');
                     state.player.isParrying = false;
                     state.player.parryTimer = 0;
+                    state.hitStopTimer = 10; // Visual impact freeze
+                    state.screenShake = { magnitude: 5, duration: 10 }; // Fast parry jolt
                     
                     state.particles.push({
                         id: Math.random(),
@@ -177,7 +407,11 @@ export const updateProjectiles = (state: GameState) => {
                     });
 
                     state.projectiles.splice(i, 1);
-                    state.screenShake = { magnitude: 2, duration: 15 };
+                    if (projectile.isBoss) {
+                        state.screenShake = { magnitude: 6, duration: 25 };
+                    } else {
+                        state.screenShake = { magnitude: 2, duration: 15 };
+                    }
                 }
             }
         }
@@ -185,11 +419,61 @@ export const updateProjectiles = (state: GameState) => {
 };
 
 export const updateParticles = (state: GameState) => {
+    const platforms = state.platforms;
     for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
         p.life--;
         if (p.life <= 0) {
             state.particles.splice(i, 1);
+            continue;
+        }
+
+        // Real-time platform splash-down logic for droplets
+        if (p.type === 'blood') {
+            let hitPlatform = false;
+            for (let j = 0; j < platforms.length; j++) {
+                const plat = platforms[j];
+                if (p.x >= plat.x && p.x <= plat.x + plat.width &&
+                    p.y >= plat.y && p.y <= plat.y + 12 &&
+                    p.velocityY >= 0) {
+                    
+                    p.y = plat.y - p.size / 3; // Snap neatly to platform top
+                    p.velocityY = 0;
+                    p.velocityX = 0;
+                    p.size = Math.min(p.size * 1.15, 3.2); // Tiny, refined splats on platform top
+                    hitPlatform = true;
+                    break;
+                }
+            }
+
+            // Prolong pooled blood life to stain the level subtly
+            if (hitPlatform && Math.random() < 0.15) {
+                p.life = Math.max(p.life, 20);
+            }
+        }
+
+        // Bouncing, gravity-bound splinters
+        if (p.type === 'splinter') {
+            p.velocityY += 0.22; // Gravity pull
+            p.velocityX *= 0.98; // Air resistance drag
+            
+            for (let j = 0; j < platforms.length; j++) {
+                const plat = platforms[j];
+                if (p.x >= plat.x && p.x <= plat.x + plat.width &&
+                    p.y >= plat.y && p.y <= plat.y + 10 &&
+                    p.velocityY >= 0) {
+                    
+                    p.y = plat.y - p.size / 2; // Stabilize above the platform
+                    if (p.velocityY > 1.2) {
+                        p.velocityY = -p.velocityY * 0.45; // Bounce off wooden surface
+                        p.velocityX *= 0.6; // Tangential friction slows it down on bounces
+                    } else {
+                        p.velocityY = 0;
+                        p.velocityX = 0;
+                    }
+                    break;
+                }
+            }
         }
     }
 };
@@ -264,6 +548,12 @@ export const updateEnemies = (state: GameState) => {
             return; // Skip AI logic if staggered
         }
 
+        // --- BREAKABLE CONTAINER LOGIC ---
+        if (enemy.type === 'crate' || enemy.type === 'urn') {
+            applyGravityAndPlatformCollision(enemy, platforms);
+            if (enemy.hitTimer > 0) enemy.hitTimer--;
+            return; // Skip hostile AI movement entirely
+        }
 
         // --- AI LOGIC ---
         if (enemy.type === 'enforcer') {
@@ -313,6 +603,7 @@ export const updateEnemies = (state: GameState) => {
                             player.health -= 15;
                             player.invincibilityTimer = 60;
                             state.screenShake = { magnitude: 2, duration: 15 };
+                            state.particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 18, '#ff4d4d'));
                         }
                     }
                 } else if (enemy.attackPattern === 'meleeSlash') {
@@ -432,6 +723,7 @@ export const updateEnemies = (state: GameState) => {
                     if (checkCollision(player, hitbox) && player.invincibilityTimer === 0) {
                         player.health -= 12;
                         player.invincibilityTimer = 60;
+                        state.particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 16, '#ff4d4d'));
                     }
                     audioManager.playSFX('clawAttack');
                 }
@@ -492,16 +784,22 @@ export const updateEnemies = (state: GameState) => {
             // Handle landing from slam attack
             const wasAirborne = !enemy.onGround;
             applyGravityAndPlatformCollision(enemy, platforms);
-            if (wasAirborne && enemy.onGround && enemy.attackPattern === 'slam') {
-                state.screenShake = { magnitude: 6, duration: 30 };
-                state.particles.push({
-                    id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height, velocityX: 0, velocityY: 0,
-                    life: 30, maxLife: 30, color: 'white', size: C.BOSS_SLAM_RADIUS * 2, type: 'shockwave'
-                });
-                if (player.onGround && Math.abs(player.x - enemy.x) < C.BOSS_SLAM_RADIUS) {
-                    player.health -= C.BOSS_SLAM_DAMAGE;
-                    player.invincibilityTimer = 60;
-                    state.screenShake = { magnitude: 8, duration: 30 };
+            if (wasAirborne && enemy.onGround) {
+                if (enemy.attackPattern === 'slam') {
+                    state.screenShake = { magnitude: 6, duration: 30 };
+                    state.particles.push({
+                        id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height, velocityX: 0, velocityY: 0,
+                        life: 30, maxLife: 30, color: 'white', size: C.BOSS_SLAM_RADIUS * 2, type: 'shockwave'
+                    });
+                    spawnBossEnvironmentDebris(state, enemy, 25);
+                    if (player.onGround && Math.abs(player.x - enemy.x) < C.BOSS_SLAM_RADIUS && player.invincibilityTimer === 0) {
+                        player.health -= C.BOSS_SLAM_DAMAGE;
+                        player.invincibilityTimer = 60;
+                        state.screenShake = { magnitude: 8, duration: 30 };
+                        state.particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 24, '#ff4d4d'));
+                    }
+                } else {
+                    spawnBossEnvironmentDebris(state, enemy, 10);
                 }
             }
 
@@ -537,6 +835,7 @@ export const updateEnemies = (state: GameState) => {
                                 id: Math.random(), x: enemy.x + enemy.width/2, y: enemy.y + enemy.height/2, width: 16, height: 16,
                                 velocityX: Math.cos(angle) * C.SEEKER_PROJECTILE_SPEED * 1.5, velocityY: Math.sin(angle) * C.SEEKER_PROJECTILE_SPEED * 1.5,
                                 type: 'darkEnergy', owner: 'enemy', damage: C.SEEKER_PROJECTILE_DAMAGE * 1.5,
+                                isBoss: true,
                             });
                         }
                     }
@@ -550,11 +849,25 @@ export const updateEnemies = (state: GameState) => {
             if (enemy.dashTimer && enemy.dashTimer > 0) { // Is dashing
                 enemy.dashTimer--;
                 enemy.x += C.BOSS_DASH_SPEED * enemy.direction;
+                
+                // Wall containment and hit environmental mechanics
+                if (enemy.x <= 0) {
+                    enemy.x = 0;
+                    triggerBossWallSlam(state, enemy, 'left');
+                } else if (enemy.x + enemy.width >= state.worldWidth) {
+                    enemy.x = state.worldWidth - enemy.width;
+                    triggerBossWallSlam(state, enemy, 'right');
+                }
+                
                 if (enemy.dashTimer <= 0) enemy.attackPattern = 'idle';
             } else if (!enemy.attackPattern || enemy.attackPattern === 'idle') {
                 // Default movement when not attacking
                 enemy.direction = Math.sign(distanceX) as 1 | -1;
                 enemy.x += enemy.speed * enemy.direction;
+                
+                // Keep regular walking clean inside borders
+                if (enemy.x < 0) enemy.x = 0;
+                if (enemy.x + enemy.width > state.worldWidth) enemy.x = state.worldWidth - enemy.width;
             }
         }
         
@@ -565,7 +878,7 @@ export const updateEnemies = (state: GameState) => {
 
         if (enemy.hitTimer > 0) enemy.hitTimer--;
 
-        if (checkCollision(player, enemy) && enemy.type !== 'specter') { // Specters damage with attacks, not contact
+        if (checkCollision(player, enemy) && enemy.type !== 'specter' && enemy.type !== 'crate' && enemy.type !== 'urn') { // Specters damage with attacks, not contact
             if (player.isParrying) {
                 // Successful melee parry
                 enemy.staggerTimer = C.ENEMY_STAGGER_DURATION;
@@ -573,6 +886,8 @@ export const updateEnemies = (state: GameState) => {
                 audioManager.playSFX('parrySuccess');
                 player.isParrying = false;
                 player.parryTimer = 0;
+                state.hitStopTimer = 12; // Visual impact freeze
+                state.screenShake = { magnitude: 7, duration: 15 }; // Intense parry rumble
                 
                 state.particles.push({
                     id: Math.random(),
@@ -608,7 +923,15 @@ export const updateEnemies = (state: GameState) => {
                 audioManager.playSFX('playerHurt');
                 player.velocityY = -5;
                 player.velocityX = 8 * (player.x < enemy.x ? -1 : 1);
-                state.screenShake = { magnitude: 4, duration: 20 };
+                state.hitStopTimer = enemy.type === 'boss' ? 12 : 8; // Freeze frame when hit to convey damage weight
+                if (enemy.type === 'boss') {
+                    state.screenShake = { magnitude: 8, duration: 25 };
+                } else {
+                    state.screenShake = { magnitude: 4, duration: 20 };
+                }
+
+                // Visceral blood spray on direct body damage!
+                state.particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 18, '#ff4d4d'));
 
                 state.particles.push({
                     id: Math.random(),
@@ -660,7 +983,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // START PARRY
-    if (keys['l'] && !player.isParrying && player.parryCooldown === 0 && player.mana >= C.PARRY_MANA_COST && player.onGround && !player.attacking && !player.isDashing) {
+    if (keys['h'] && !player.isParrying && player.parryCooldown === 0 && player.mana >= C.PARRY_MANA_COST && player.onGround && !player.attacking && !player.isDashing) {
         player.isParrying = true;
         player.parryTimer = C.PARRY_DURATION;
         player.parryCooldown = C.PARRY_COOLDOWN;
@@ -679,7 +1002,7 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // START DASH
-    if (keys['h'] && !player.isDashing && player.dashCooldown === 0 && player.mana >= C.DASH_MANA_COST && !player.attacking && player.chargeTimer === 0) {
+    if (keys['s'] && !player.isDashing && player.dashCooldown === 0 && player.mana >= C.DASH_MANA_COST && !player.attacking && player.chargeTimer === 0) {
         player.isDashing = true;
         player.dashTimer = C.DASH_DURATION;
         player.dashCooldown = C.DASH_COOLDOWN;
@@ -692,11 +1015,39 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
     }
 
     // Handle Charge Attack (prevent if dashing)
-    if (keys['s'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN && !player.isDashing) {
+    if (keys['l'] && player.onGround && !player.attacking && player.mana >= C.CHARGE_ATTACK_MANA_COST_MIN && !player.isDashing) {
         if (player.chargeTimer === 0) {
             audioManager.playSFX('chargeStart');
         }
         player.chargeTimer = Math.min(C.CHARGE_ATTACK_MAX_TIME, player.chargeTimer + 1);
+
+        // Spawn beautiful inward-gravitating spark particles that fly towards the center of the character
+        if (Math.random() < 0.5) {
+            const playerCenterX = player.x + player.width / 2;
+            const playerCenterY = player.y + player.height / 2;
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 50 + Math.random() * 40;
+            const startX = playerCenterX + Math.cos(angle) * distance;
+            const startY = playerCenterY + Math.sin(angle) * distance;
+            
+            // Speed vector pointing directly toward player's center
+            const speed = 2.5 + Math.random() * 2;
+            const velocityX = -Math.cos(angle) * speed;
+            const velocityY = -Math.sin(angle) * speed;
+            
+            particles.push({
+                id: Math.random(),
+                x: startX,
+                y: startY,
+                velocityX: velocityX,
+                velocityY: velocityY,
+                life: 20,
+                maxLife: 20,
+                color: player.isWerewolf ? '#c084fc' : '#22d3ee', // Purple for werewolf, Cyan for standard form
+                size: 2 + Math.random() * 3,
+                type: 'spark'
+            });
+        }
     } else if (player.chargeTimer > 0) { // Released key or no longer meets conditions
         if (player.chargeTimer >= C.CHARGE_ATTACK_MIN_TIME) {
             const chargeRatio = (player.chargeTimer - C.CHARGE_ATTACK_MIN_TIME) / (C.CHARGE_ATTACK_MAX_TIME - C.CHARGE_ATTACK_MIN_TIME);
@@ -726,8 +1077,15 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     if (distance <= radius + (enemy.width / 2)) {
                         enemy.health -= damage;
                         enemy.hitTimer = 10;
-                        audioManager.playSFX('enemyHit');
-                        particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
+                        if (enemy.type === 'boss') {
+                            state.screenShake = { magnitude: 8, duration: 25 };
+                            spawnBossHitSparks(state, enemy, '#4dccbd');
+                        } else if (enemy.type === 'crate' || enemy.type === 'urn') {
+                            audioManager.playSFX('enemyHit');
+                            particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, enemy.type === 'urn'));
+                        } else {
+                            particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 15));
+                        }
                         
                         particles.push({
                             id: Math.random(),
@@ -744,11 +1102,17 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                         });
 
                         if (enemy.health <= 0) {
-                            const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
-                            state.player.experience += xp;
-                            state.score += xp;
-                            audioManager.playSFX('enemyDefeated');
-                            particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                            if (enemy.type === 'crate' || enemy.type === 'urn') {
+                                audioManager.playSFX('enemyDefeated');
+                                particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 22, enemy.type === 'urn'));
+                                spawnBreakableLoot(state, enemy);
+                            } else {
+                                const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                                state.player.experience += xp;
+                                state.score += xp;
+                                audioManager.playSFX('enemyDefeated');
+                                particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                            }
                         }
                     }
                 });
@@ -766,6 +1130,9 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.onGround = false;
             audioManager.playSFX('playerHurt');
             state.screenShake = { magnitude: 2, duration: 15 };
+            
+            // Severe puncture wound blood splatter!
+            particles.push(...createHitParticles(player.x + player.width / 2, player.y + player.height / 2, 24, '#ff4d4d'));
 
             particles.push({
                 id: Math.random(),
@@ -803,6 +1170,11 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 audioManager.playSFX('powerUp');
                 powerUps.splice(index, 1);
             }
+            if (powerUp.type === 'coin') {
+                state.score += 100;
+                audioManager.playSFX('powerUp');
+                powerUps.splice(index, 1);
+            }
         }
     });
     
@@ -817,8 +1189,16 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 if (checkCollision(hitbox, enemy)) {
                     enemy.health -= damage;
                     enemy.hitTimer = 10;
-                    audioManager.playSFX('enemyHit');
-                    particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8));
+                    state.hitStopTimer = enemy.type === 'boss' ? 8 : 4; // Add punchy visual freeze
+                    if (enemy.type === 'boss') {
+                        state.screenShake = { magnitude: 5, duration: 15 };
+                        spawnBossHitSparks(state, enemy, player.isWerewolf ? '#c084fc' : '#38bdf8');
+                    } else if (enemy.type === 'crate' || enemy.type === 'urn') {
+                        audioManager.playSFX('enemyHit');
+                        particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 8, enemy.type === 'urn'));
+                    } else {
+                        particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, player.isWerewolf ? 24 : 14));
+                    }
                     
                     particles.push({
                         id: Math.random(),
@@ -835,11 +1215,17 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                     });
 
                     if (enemy.health <= 0) {
-                        const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
-                        state.player.experience += xp;
-                        state.score += xp;
-                        audioManager.playSFX('enemyDefeated');
-                        particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20));
+                        if (enemy.type === 'crate' || enemy.type === 'urn') {
+                            audioManager.playSFX('enemyDefeated');
+                            particles.push(...createSplinterParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 22, enemy.type === 'urn'));
+                            spawnBreakableLoot(state, enemy);
+                        } else {
+                            const xp = enemy.type === 'enforcer' ? C.XP_PER_ENFORCER : enemy.type === 'seeker' ? C.XP_PER_SEEKER : C.XP_PER_BOSS;
+                            state.player.experience += xp;
+                            state.score += xp;
+                            audioManager.playSFX('enemyDefeated');
+                            particles.push(...createHitParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, player.isWerewolf ? 48 : 32));
+                        }
                     }
                 }
             });
@@ -956,7 +1342,9 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             const maxSpeed = player.speed;
             
             if (keys['a'] || keys['arrowleft']) { 
-                player.velocityX = Math.max(-maxSpeed, player.velocityX - acc); 
+                // snappy turnaround traction boost if moving opposite direction
+                const actualAcc = player.velocityX > 0 ? acc * 3.0 : acc;
+                player.velocityX = Math.max(-maxSpeed, player.velocityX - actualAcc); 
                 player.facing = -1; 
                 
                 // Emitting dust running particles
@@ -976,7 +1364,9 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 }
             } 
             else if (keys['d'] || keys['arrowright']) { 
-                player.velocityX = Math.min(maxSpeed, player.velocityX + acc); 
+                // snappy turnaround traction boost if moving opposite direction
+                const actualAcc = player.velocityX < 0 ? acc * 3.0 : acc;
+                player.velocityX = Math.min(maxSpeed, player.velocityX + actualAcc); 
                 player.facing = 1; 
                 
                 // Emitting dust running particles
@@ -996,7 +1386,10 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 }
             } 
             else { 
-                if(!player.attacking) player.velocityX *= C.FRICTION; 
+                if(!player.attacking) {
+                    // Highly controlled ground friction to stop instantly on platforms, standard air friction
+                    player.velocityX *= (player.onGround ? 0.65 : 0.82);
+                }
             }
         }
 
@@ -1078,6 +1471,20 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
                 player.jumpBufferTimer = 0; // Consume
                 audioManager.playSFX('doubleJump');
                 
+                // Add a beautiful atmospheric expanding shockwave ring pattern
+                particles.push({
+                    id: Math.random(),
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height,
+                    velocityX: 0,
+                    velocityY: 0,
+                    life: 20,
+                    maxLife: 20,
+                    color: player.isWerewolf ? 'rgba(168, 85, 247, 0.65)' : 'rgba(34, 211, 238, 0.65)',
+                    size: 35,
+                    type: 'shockwave'
+                });
+
                 const djumpParticles: Particle[] = [];
                 for (let i = 0; i < 15; i++) {
                     djumpParticles.push({
@@ -1101,22 +1508,42 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
         if (player.isWallSliding) {
             player.y += player.velocityY;
             player.onGround = false;
+
+            // Wall slide glowing sliding sparks!
+            if (Math.random() < 0.35) {
+                const contactX = player.facing === 1 ? player.x + player.width : player.x;
+                particles.push({
+                    id: Math.random(),
+                    x: contactX,
+                    y: player.y + player.height / 2 + (Math.random() - 0.5) * 15,
+                    velocityX: -player.facing * (1.2 + Math.random() * 2), // bounce off wall
+                    velocityY: -0.5 - Math.random() * 1.5, // spray upwards gently
+                    life: 18,
+                    maxLife: 18,
+                    color: '#eab308', // gold/amber wall scraping sparks
+                    size: 2 + Math.random() * 2,
+                    type: 'spark'
+                });
+            }
         } else {
             const wasJustGrounded = !player.onGround;
             const isNowGrounded = applyGravityAndPlatformCollision(player, platforms);
 
             if (isNowGrounded && wasJustGrounded && Math.abs(player.velocityY!) > 5) {
-                for(let i=0; i<5; i++) {
+                if (Math.abs(player.velocityY!) > 15) {
+                    state.screenShake = { magnitude: 6, duration: 15 };
+                }
+                for(let i=0; i<8; i++) {
                     particles.push({
                         id: Math.random(),
-                        x: player.x + player.width / 2 + (Math.random() - 0.5) * 20,
+                        x: player.x + player.width / 2 + (Math.random() - 0.5) * 30,
                         y: player.y + player.height,
-                        velocityX: (Math.random() - 0.5) * 4,
-                        velocityY: -(Math.random() * 2),
-                        life: 20,
-                        maxLife: 20,
-                        color: 'rgba(180, 180, 200, 0.5)',
-                        size: Math.random() * 4 + 2,
+                        velocityX: (Math.random() - 0.5) * 6,
+                        velocityY: -(Math.random() * 3),
+                        life: 25 + Math.random() * 10,
+                        maxLife: 35,
+                        color: 'rgba(200, 200, 200, 0.6)',
+                        size: Math.random() * 6 + 3,
                         type: 'dust'
                     });
                 }
@@ -1172,6 +1599,25 @@ export const updatePlayer = (state: GameState, keys: Record<string, boolean>): v
             player.animation.currentState = 'dash';
             player.animation.frameTimer = 0;
             player.animation.frameIndex = 0;
+        }
+    }
+
+    // Capture spectral weapon history for motion blur trails
+    if (!player.attackTrail) {
+        player.attackTrail = [];
+    }
+    if (player.attacking && (player.animation.currentState === 'attack' || player.animation.currentState === 'clawAttack')) {
+        player.attackTrail.unshift({
+            x: player.x,
+            y: player.y,
+            facing: player.facing,
+            state: player.animation.currentState as 'attack' | 'clawAttack',
+            frameIndex: player.animation.frameIndex
+        });
+        if (player.attackTrail.length > 4) player.attackTrail.pop();
+    } else {
+        if (player.attackTrail.length > 0) {
+            player.attackTrail.shift(); // organic drag/fading
         }
     }
 };
@@ -1231,6 +1677,7 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         dashTimer: 0,
         dashCooldown: 0,
         dashTrail: [],
+        attackTrail: [],
         canDoubleJump: true,
         jumpKeyHeld: false,
         isWallSliding: false,
@@ -1239,10 +1686,73 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         parryCooldown: 0,
     };
 
+    const enemies = JSON.parse(JSON.stringify(levelData.enemies));
+    
+    // Procedural distribution of breakable crates and urns on level platforms
+    let breakableId = 5000;
+    platforms.forEach((plat: any) => {
+        const isStaticMainPlat = !plat.type || plat.type === 'static';
+        if (isStaticMainPlat && plat.width >= 120) {
+            const seed = Math.random();
+            if (seed < 0.42) {
+                // Spawn a textured wooden crate
+                enemies.push({
+                    id: breakableId++,
+                    x: plat.x + plat.width / 2 - 16,
+                    y: plat.y - 32,
+                    width: 32,
+                    height: 32,
+                    health: 12, // Simple wood durability
+                    maxHealth: 12,
+                    speed: 0,
+                    direction: 1,
+                    type: 'crate',
+                    hitTimer: 0,
+                    startX: plat.x + plat.width / 2 - 16,
+                    patrolRange: 0
+                });
+            } else if (seed < 0.70) {
+                // Spawn a terracotta clay urn
+                enemies.push({
+                    id: breakableId++,
+                    x: plat.x + plat.width * 0.2, // Off-center left
+                    y: plat.y - 32,
+                    width: 24,
+                    height: 32,
+                    health: 6, // Fragile pottery
+                    maxHealth: 6,
+                    speed: 0,
+                    direction: 1,
+                    type: 'urn',
+                    hitTimer: 0,
+                    startX: plat.x + plat.width * 0.2,
+                    patrolRange: 0
+                });
+            } else if (seed < 0.85 && plat.width > 200) {
+                // Spawn a decorative loot array of dual pottery urns
+                enemies.push({
+                    id: breakableId++,
+                    x: plat.x + plat.width - 60,
+                    y: plat.y - 32,
+                    width: 24,
+                    height: 32,
+                    health: 6,
+                    maxHealth: 6,
+                    speed: 0,
+                    direction: 1,
+                    type: 'urn',
+                    hitTimer: 0,
+                    startX: plat.x + plat.width - 60,
+                    patrolRange: 0
+                });
+            }
+        }
+    });
+
     return {
         player: initialPlayer,
         platforms,
-        enemies: JSON.parse(JSON.stringify(levelData.enemies)),
+        enemies,
         projectiles: [],
         particles: [],
         powerUps: JSON.parse(JSON.stringify(levelData.powerUps)),
@@ -1255,5 +1765,6 @@ export const createGameStateForLevel = (levelIndex: number, previousPlayerState?
         isoldeAttackTimer: 0,
         screenShake: { magnitude: 0, duration: 0 },
         hazards: levelData.hazards ? JSON.parse(JSON.stringify(levelData.hazards)) : [],
+        hitStopTimer: 0,
     };
 };

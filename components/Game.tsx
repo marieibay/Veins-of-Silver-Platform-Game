@@ -79,12 +79,17 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
 
         const state = gameStateRef.current;
         
-        updateScreenShake(state);
-        updatePlatforms(state);
-        updatePlayer(state, keysPressed.current);
-        updateEnemies(state);
-        updateProjectiles(state);
-        updateParticles(state);
+        if (state.hitStopTimer && state.hitStopTimer > 0) {
+            state.hitStopTimer--;
+            updateScreenShake(state);
+        } else {
+            updateScreenShake(state);
+            updatePlatforms(state);
+            updatePlayer(state, keysPressed.current);
+            updateEnemies(state);
+            updateProjectiles(state);
+            updateParticles(state);
+        }
 
         // Rain/Thunder Logic for Level 9 (index 8)
         if (currentLevel === 8) {
@@ -144,7 +149,7 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
                 ctx.translate(shakeX, shakeY);
             }
 
-            drawBackground(ctx, state.camera, backgroundImageRef.current);
+            drawBackground(ctx, state.camera, backgroundImageRef.current, state);
             ctx.save();
             ctx.translate(-state.camera.x, -state.camera.y);
             
@@ -160,6 +165,24 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
 
             ctx.restore(); // for camera translate
             ctx.restore(); // for screen shake
+            
+            // Pulsing Red Low-Health Vignette
+            if (state.player.health / state.player.maxHealth <= 0.35 && state.player.health > 0) {
+                const healthRatio = state.player.health / state.player.maxHealth;
+                const intensity = (1.0 - healthRatio / 0.35); // stronger pulse as health is lower
+                const pulse = 0.2 + 0.15 * Math.sin(Date.now() / 150);
+                
+                const vignette = ctx.createRadialGradient(
+                    C.CANVAS_WIDTH / 2, C.CANVAS_HEIGHT / 2, C.CANVAS_HEIGHT * 0.45,
+                    C.CANVAS_WIDTH / 2, C.CANVAS_HEIGHT / 2, C.CANVAS_WIDTH * 0.75
+                );
+                vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                vignette.addColorStop(0.7, `rgba(185, 28, 28, ${pulse * intensity * 0.45})`);
+                vignette.addColorStop(1, `rgba(136, 19, 55, ${pulse * intensity * 0.92})`);
+                
+                ctx.fillStyle = vignette;
+                ctx.fillRect(0, 0, C.CANVAS_WIDTH, C.CANVAS_HEIGHT);
+            }
             
             // Thunder Flash Rendering
             if (thunderFlashRef.current > 0) {
@@ -334,7 +357,13 @@ const Game = forwardRef<GameHandle, {}>((props, ref) => {
             {gameStatus === 'controls' && <ControlsScreen onBack={() => setGameStatus('title')} />}
             {gameStatus === 'intro' && <IntroScreen onComplete={handleIntroComplete} />}
             {(gameStatus === 'playing' || gameStatus === 'paused') && <UIOverlay {...uiState} onToggleMute={toggleMute} />}
-            {gameStatus === 'paused' && <PauseScreen />}
+            {gameStatus === 'paused' && (
+                <PauseScreen 
+                    isMuted={uiState.isMuted} 
+                    onToggleMute={toggleMute} 
+                    onResume={() => setGameStatus('playing')} 
+                />
+            )}
             {gameStatus === 'gameOver' && <GameOverScreen score={uiState.score} onRestart={restartGame} />}
             {gameStatus === 'victory' && <VictoryScreen score={uiState.score} onNextLevel={handleProceed} isLastLevel={currentLevel >= LEVELS.length - 1} />}
             {gameStatus === 'upgrade' && <UpgradeScreen uiState={uiState} onPurchase={handlePurchaseUpgrade} onContinue={handleNextLevel} />}

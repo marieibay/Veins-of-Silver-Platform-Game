@@ -38,3 +38,33 @@
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
 }
+
+/* Custom scrollbar styling to blend perfectly with the gothic slate and crimson theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: #020617; /* Matches dark-slate container backgrounds */
+}
+
+::-webkit-scrollbar-track {
+  background-color: #020617;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #1e293b; /* Dark slate-800 thumb */
+  border-radius: 4px;
+  border: 1px solid #020617; /* Padding bezel */
+  transition: background-color 0.2s ease-in-out;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #991b1b; /* Glistening dark blood red handle on focus */
+}
+
+/* Firefox scrollbar compatibility support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e293b #020617;
+}
+

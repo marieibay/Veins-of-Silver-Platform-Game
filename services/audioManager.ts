@@ -33,12 +33,19 @@ class AudioManager {
      * This is required by modern browsers' autoplay policies.
      */
     public initializeAudioContext() {
-        if (this.audioContext) return;
+        if (this.audioContext) {
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            return;
+        }
         try {
             const w = window as any;
             const AudioContext = w.AudioContext || w.webkitAudioContext;
             if (AudioContext) {
                 this.audioContext = new AudioContext();
+                this.audioContext.resume(); // Ensure context is running
+                console.log("AudioContext initialized and resumed");
                 this.masterGain = this.audioContext.createGain();
                 this.masterGain.connect(this.audioContext.destination);
                 if (this._isMuted) {

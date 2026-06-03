@@ -45,6 +45,7 @@ export interface PlayerState {
   dashTimer: number;
   dashCooldown: number;
   dashTrail: { x: number; y: number; facing: 1 | -1 }[];
+  attackTrail?: { x: number; y: number; facing: 1 | -1; state: 'attack' | 'clawAttack'; frameIndex: number }[];
   canDoubleJump: boolean;
   jumpKeyHeld: boolean;
   isWallSliding: boolean;
@@ -69,7 +70,7 @@ export interface Platform {
   direction?: 1 | -1;
 }
 
-export type EnemyType = 'enforcer' | 'seeker' | 'boss' | 'specter' | 'gargoyle';
+export type EnemyType = 'enforcer' | 'seeker' | 'boss' | 'specter' | 'gargoyle' | 'crate' | 'urn';
 
 export interface Enemy {
   id: number;
@@ -114,9 +115,10 @@ export interface Projectile {
   type: 'dagger' | 'darkEnergy';
   owner: 'player' | 'enemy';
   damage: number;
+  isBoss?: boolean;
 }
 
-export type PowerUpType = 'lunarFragment' | 'isoldeAid' | 'healthVial';
+export type PowerUpType = 'lunarFragment' | 'isoldeAid' | 'healthVial' | 'coin';
 
 export interface PowerUp {
     id: number;
@@ -137,7 +139,7 @@ export interface Particle {
   maxLife: number;
   color: string;
   size: number;
-  type?: 'shockwave' | 'damageText' | 'dust' | 'flash' | 'spark';
+  type?: 'shockwave' | 'damageText' | 'dust' | 'flash' | 'spark' | 'blood' | 'splinter';
   text?: string;
 }
 
@@ -193,6 +195,7 @@ export interface GameState {
   isoldeAttackTimer: number;
   screenShake: { magnitude: number; duration: number; };
   hazards: Hazard[];
+  hitStopTimer?: number;
 }
 
 export type GameStatus = 'title' | 'intro' | 'playing' | 'gameOver' | 'victory' | 'upgrade' | 'paused' | 'controls';
